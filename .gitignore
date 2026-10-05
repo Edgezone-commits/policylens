@@ -1,0 +1,30 @@
+# Data: never commit source documents or the vector index.
+# Legal PDFs are large, often license-restricted, and the index is reproducible
+# from them by re-running scripts/ingest_docs.py.
+data/
+*.pdf
+chroma_db/
+
+# Secrets
+.env
+
+# Evaluation output is a build artifact of evaluate.py, not source.
+evaluation/results/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Local databases
+*.db
+*.sqlite3
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

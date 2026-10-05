@@ -1,0 +1,23 @@
+[project]
+name = "policylens"
+version = "0.1.0"
+description = "Agentic document analysis for legal and policy documents, with verified citations"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+# rootdir on sys.path so `from src...` works without installing the package.
+# WHY: keeps `pytest` runnable straight from a clone, with no `pip install -e .`
+# step that a reader of the README would have to discover.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-v --strict-markers"
+markers = [
+    # Tests that call a real LLM. Skipped automatically when no API key is
+    # set, so CI stays green without secrets while still running everything
+    # that does not need the network.
+    "llm: requires a live LLM API key (deselect with '-m \"not llm\"')",
+    "slow: takes more than a few seconds (loads the embedding model)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

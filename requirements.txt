@@ -1,0 +1,46 @@
+# --- LLM access -------------------------------------------------------------
+# LiteLLM gives one uniform call signature for ~100 providers. We use it so the
+# model can be swapped by editing a single string in src/config.py, which keeps
+# the free-tier Gemini default from becoming a hard dependency.
+litellm>=1.63.0
+
+# --- Agent orchestration ----------------------------------------------------
+# LangGraph (not a LangChain sequential chain) because the verification retry
+# loop is a cycle with conditional edges, which a linear chain cannot express.
+langgraph>=0.3.0
+
+# --- LangChain toolkit ------------------------------------------------------
+# Used for the pieces that are genuinely solved problems: PDF loading and
+# recursive text splitting. Orchestration stays in LangGraph.
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+pypdf>=5.0.0
+
+# --- Embeddings (local, free, no API key, no rate limit) --------------------
+sentence-transformers>=3.0.0
+
+# --- Vector store -----------------------------------------------------------
+chromadb>=0.6.0
+
+# --- Verifier ---------------------------------------------------------------
+# RapidFuzz does the programmatic citation check (is the quoted text actually
+# present in the chunk?) before we spend an LLM call on it.
+rapidfuzz>=3.9.0
+
+# --- API --------------------------------------------------------------------
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9   # required by FastAPI for PDF file uploads
+pydantic>=2.9.0
+
+# --- Frontend ---------------------------------------------------------------
+streamlit>=1.39.0
+
+# --- Utilities --------------------------------------------------------------
+python-dotenv>=1.0.0
+requests>=2.32.0
+
+# --- Tests ------------------------------------------------------------------
+pytest>=8.3.0
+httpx>=0.27.0             # FastAPI TestClient transport
