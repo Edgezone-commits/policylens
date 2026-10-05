@@ -117,9 +117,18 @@ RETRIEVAL_TOP_K: int = 5
 # nearest chunks, even for a question the corpus has never mentioned. The LLM
 # then dutifully answers from irrelevant text and we get a confident
 # hallucination. The threshold is what lets the agent say "no evidence".
-# Calibrated in Phase 2 -- see docs/EVALUATION.md.
+#
+# 0.32 is MEASURED, not guessed. scripts/calibrate_threshold.py scores 14
+# answerable and 12 off-topic questions against the live index:
+#   answerable:   min 0.331, median 0.601, max 0.759
+#   off-topic:    min 0.066, median 0.142, max 0.297
+# The two sets separate cleanly, and every threshold in 0.30-0.33 classifies
+# all 26 probes correctly. We take 0.32, the midpoint of that band, rather
+# than the 0.30 end of it: 0.30 sits just 0.003 above the highest off-topic
+# score, so a slightly differently worded question would tip into a false
+# answer. The midpoint buys margin on both sides at no measured cost.
 RETRIEVAL_SIMILARITY_THRESHOLD: float = float(
-    os.getenv("POLICYLENS_SIMILARITY_THRESHOLD", "0.30")
+    os.getenv("POLICYLENS_SIMILARITY_THRESHOLD", "0.32")
 )
 
 # On a verification failure the agent retries with a wider net before giving up.

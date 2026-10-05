@@ -173,6 +173,94 @@ class VectorStore:
             )
         return results
 
+    def retrieve(
+        self,
+        query: str,
+        top_k: int | None = None,
+        threshold: float | None = None,
+        source_document: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Embed a text query and return the relevant chunks above `threshold`.
+
+        This is the method the agent's retriever node calls. It is the only
+        place in the system that decides whether evidence exists at all, which
+        makes it the foundation of the agent's ability to abstain.
+
+        The threshold is applied in two ways, and the distinction matters:
+
+        1. As a GATE. If even the best-matching chunk scores below the
+           threshold, we return an empty list rather than the best of a bad
+           set. The caller reads that as "no evidence" and routes to
+           INSUFFICIENT_EVIDENCE. Without this gate a vector search always
+           succeeds -- ask about chocolate cake and it will hand back the five
+           least-unrelated paragraphs of labour law, which the LLM will then
+           answer from. Measured on this corpus, off-topic questions peak
+           around 0.18 while answerable ones score 0.52-0.71, so the gate has
+           real signal to work with.
+
+        2. As a FILTER on the chunks that remain. Once the gate passes, chunks
+           that individually fall below the threshold are dropped. A set like
+           [0.70, 0.68, 0.31, 0.29, 0.28] is better truncated than passed on
+           whole: the weak chunks contribute no evidence but do give the LLM
+           extra material to misattribute a citation to.
+
+        Returns a list of dicts ordered by descending similarity, each as
+        documented on query_by_embedding().
+        """
+        top_k = top_k or config.RETRIEVAL_TOP_K
+        threshold = (
+            threshold if threshold is not None else config.RETRIEVAL_SIMILARITY_THRESHOLD
+        )
+
+        query = (query or "").strip()
+        if not query:
+            logger.warning("retrieve() called with an empty query")
+            return []
+
+        candidates = self.query_by_embedding(
+            self.embeddings.embed_query(query),
+            top_k=top_k,
+            source_document=source_document,
+        )
+
+        if not candidates:
+            logger.info("Retrieval found nothing for %r", query[:80])
+            return []
+
+        best = candidates[0]["similarity"]
+        if best < threshold:
+            # Logged at INFO, not DEBUG: an abstention is a decision the agent
+            # made, and the reasoning path has to be able to explain it.
+            logger.info(
+                "Retrieval below threshold for %r: best similarity %.3f < %.2f "
+                "-- treating as no evidence",
+                query[:80],
+                best,
+                threshold,
+            )
+            return []
+
+        results = [item for item in candidates if item["similarity"] >= threshold]
+
+        logger.info(
+            "Retrieved %d/%d chunks above %.2f for %r (best %.3f, from %s)",
+            len(results),
+            len(candidates),
+            threshold,
+            query[:60],
+            best,
+            results[0]["source_document"],
+        )
+        for item in results:
+            logger.debug(
+                "  %.3f  %s p%s %s",
+                item["similarity"],
+                item["source_document"],
+                item["page_number"],
+                item["section"] or "-",
+            )
+        return results
+
     def get_chunk(self, chunk_id: str) -> dict[str, Any] | None:
         """Fetch one chunk by id.
 

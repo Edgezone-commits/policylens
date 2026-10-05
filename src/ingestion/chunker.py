@@ -31,6 +31,14 @@ _SECTION_HEADING_RE = re.compile(
 # Matches a chapter heading, e.g. "Chapter-1" or "Chapter 10".
 _CHAPTER_HEADING_RE = re.compile(r"^\s*Chapter\s*[-\s]?(\d{1,3})\b", re.MULTILINE)
 
+# Matches a parenthesised rule reference, e.g. "Gratuity (Rule 23)".
+# WHY a separate pattern: subordinate legislation is numbered by rule, not
+# section, and the Labour Rules document heads each provision this way rather
+# than with a leading "23.". Without this it produced no locator at all, so a
+# citation to the Rules could only say "page 7" -- useless for checking a
+# cross-document comparison against the Act.
+_RULE_HEADING_RE = re.compile(r"\(Rules?\s*(\d{1,3})", re.IGNORECASE)
+
 
 def _build_splitter(
     chunk_size: int, chunk_overlap: int
@@ -64,6 +72,8 @@ def _find_headings(text: str) -> list[tuple[int, str]]:
         headings.append((match.start(), f"Section {match.group(1)}"))
     for match in _CHAPTER_HEADING_RE.finditer(text):
         headings.append((match.start(), f"Chapter {match.group(1)}"))
+    for match in _RULE_HEADING_RE.finditer(text):
+        headings.append((match.start(), f"Rule {match.group(1)}"))
     headings.sort(key=lambda item: item[0])
     return headings
 
