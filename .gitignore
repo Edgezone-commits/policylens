@@ -28,3 +28,8 @@ venv/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Working notes for Claude Code: project state, interview prep, next steps.
+# Deliberately local -- it is a scratchpad about the work rather than part of
+# it, and the same ground is covered for a reader by README.md and docs/.
+CLAUDE.md
