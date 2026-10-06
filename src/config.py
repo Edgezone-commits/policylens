@@ -52,6 +52,17 @@ LLM_TEMPERATURE: float = 0.0
 # the model to pad, which raises the chance it drifts from the cited text.
 LLM_MAX_TOKENS: int = 1024
 
+# Extra budget for models that think before replying. WHY separate from the cap
+# above: a thinking model counts its reasoning against the SAME output budget
+# as the visible reply, so a 1024 cap is not "1024 tokens of answer" -- it is
+# 1024 shared with however much the model decides to think. Gemini 3 Flash
+# spent nearly all of it reasoning about a cross-document comparison and
+# returned a JSON object cut off mid-string, which downstream looks like the
+# model replying with garbage rather than like a budget that was too small.
+# The answer cap stays where it is (short answers, less drift); thinking gets
+# its own headroom on top, and only for the steps that actually think.
+LLM_THINKING_TOKEN_HEADROOM: int = 2048
+
 # Gemini 2.5 Flash enables "thinking" by default, which costs latency and
 # tokens. The router and verifier are cheap classification tasks that do not
 # benefit from it, so we switch it off for them and keep it for the analyzer.

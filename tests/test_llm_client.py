@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import pytest
 from litellm import exceptions as llm_exceptions
 
+from src import config
 from src.agent import llm as llm_module
 from src.agent.llm import (
     LLMClient,
@@ -27,12 +28,17 @@ from src.agent.llm import (
 )
 
 
-def fake_reply(content: str, prompt_tokens: int = 10, completion_tokens: int = 5):
+def fake_reply(
+    content: str,
+    prompt_tokens: int = 10,
+    completion_tokens: int = 5,
+    finish_reason: str = "stop",
+):
     """Build the minimal object shape LLMClient reads from a litellm reply."""
     return SimpleNamespace(
         choices=[
             SimpleNamespace(
-                message=SimpleNamespace(content=content), finish_reason="stop"
+                message=SimpleNamespace(content=content), finish_reason=finish_reason
             )
         ],
         usage=SimpleNamespace(
@@ -223,6 +229,73 @@ def test_complete_json_reprompts_once_then_gives_up(monkeypatch, client):
     # Exactly two calls: one reprompt, and no third attempt spending quota to
     # prove the prompt is wrong.
     assert replies == []
+
+
+def test_a_truncated_reply_is_retried_with_a_bigger_budget_not_a_scolding(
+    monkeypatch, client
+):
+    """Observed live: the reminder made the model abandon the question instead.
+
+    A reply cut off by the token budget is well-formed and simply unfinished,
+    so the fix is more room, not a sterner prompt.
+    """
+    seen: list[dict] = []
+
+    def completion(**kwargs):
+        seen.append({"max_tokens": kwargs["max_tokens"], "prompt": kwargs["messages"][-1]["content"]})
+        if len(seen) == 1:
+            # A JSON object cut off mid-string, exactly as Gemini returned one.
+            return fake_reply('{\n  "answer": "Under the Labour Act, the employer',
+                              finish_reason="length")
+        return fake_reply('{"answer": "Under the Labour Act, the employer deposits 8.33%."}')
+
+    monkeypatch.setattr(llm_module.litellm, "completion", completion)
+
+    payload, _ = client.complete_json("question", required_keys=("answer",))
+
+    assert payload["answer"].endswith("8.33%.")
+    # The budget doubled...
+    assert seen[1]["max_tokens"] == seen[0]["max_tokens"] * 2
+    # ...and the prompt was NOT changed to complain about JSON formatting.
+    assert seen[1]["prompt"] == seen[0]["prompt"]
+
+
+def test_a_malformed_reply_is_retried_with_the_reminder(monkeypatch, client):
+    """The other half of the pair: bad format does get the sterner prompt."""
+    seen: list[str] = []
+
+    def completion(**kwargs):
+        seen.append(kwargs["messages"][-1]["content"])
+        if len(seen) == 1:
+            return fake_reply("Sure! Here is my answer: six months.")
+        return fake_reply('{"answer": "six months"}')
+
+    monkeypatch.setattr(llm_module.litellm, "completion", completion)
+
+    client.complete_json("question", required_keys=("answer",))
+
+    assert "not valid JSON" in seen[1]
+    assert "not valid JSON" not in seen[0]
+
+
+def test_thinking_models_get_their_own_token_headroom(monkeypatch, client):
+    """maxOutputTokens is shared with reasoning, so the answer cap is not enough."""
+    budgets: list[int] = []
+
+    def completion(**kwargs):
+        budgets.append(kwargs["max_tokens"])
+        return fake_reply("ok")
+
+    monkeypatch.setattr(llm_module.litellm, "completion", completion)
+    monkeypatch.setattr(LLMClient, "_supports_reasoning", staticmethod(lambda model: True))
+
+    client.complete("analyse this", max_tokens=1024, simple_task=False)
+    client.complete("classify this", max_tokens=1024, simple_task=True)
+
+    # Thinking on: the headroom is added. Thinking off: it is not, because the
+    # reasoning_effort=disable makes it dead budget.
+    assert budgets[0] == 1024 + config.LLM_THINKING_TOKEN_HEADROOM
+    assert budgets[1] == 1024
 
 
 def test_complete_json_reprompts_when_a_required_key_is_missing(monkeypatch, client):

@@ -75,6 +75,19 @@ class LLMResponse:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     latency_seconds: float = 0.0
+    finish_reason: str = "stop"
+
+    @property
+    def truncated(self) -> bool:
+        """Did the model run out of output budget mid-reply?
+
+        Worth distinguishing from any other bad reply: a truncated JSON object
+        is not a formatting mistake, so reprompting with "reply with JSON only"
+        asks the model to fix something it did not do wrong -- and, observed on
+        a real run, invites it to return a shorter answer that abandons the
+        question instead. The fix is a bigger budget, not a sterner prompt.
+        """
+        return self.finish_reason in ("length", "max_tokens", "MAX_TOKENS")
 
 
 def call_record(response: LLMResponse, label: str) -> dict[str, Any]:
@@ -319,34 +332,54 @@ class LLMClient:
     ) -> tuple[dict[str, Any], LLMResponse]:
         """Send a prompt that must be answered with a JSON object.
 
-        One reprompt is allowed if the reply will not parse, or parses but
-        lacks a required key. WHY retry rather than fail: a malformed reply is
-        usually a one-off (a stray preamble, a truncated brace), and the
-        alternative is losing an otherwise good answer to a formatting slip.
-        WHY only one: if the second reply is also malformed then the prompt is
-        wrong, and a third call just spends quota proving it.
+        One retry is allowed if the reply will not parse, or parses but lacks a
+        required key. WHY retry rather than fail: a malformed reply is usually
+        a one-off (a stray preamble, a truncated brace), and the alternative is
+        losing an otherwise good answer to a formatting slip. WHY only one: if
+        the second reply is also malformed then the prompt is wrong, and a
+        third call just spends quota proving it.
+
+        The retry is chosen to match the failure, which matters more than it
+        sounds. A reply cut off by the token budget is not a formatting
+        mistake, and scolding the model about JSON produced -- on a real run --
+        a well-formed reply that had given up on the question. Truncation gets
+        a bigger budget; everything else gets the reminder.
         """
         reminder = (
             "\n\nIMPORTANT: your previous reply was not valid JSON. Reply with "
             "the JSON object ONLY -- no prose, no markdown fence."
         )
 
+        budget = max_tokens or self.max_tokens
+        remind = False
         last_error: LLMResponseFormatError | None = None
+
         for attempt in range(2):
             response = self.complete(
-                prompt if attempt == 0 else prompt + reminder,
+                prompt + reminder if remind else prompt,
                 system=system,
                 simple_task=simple_task,
                 json_mode=True,
-                max_tokens=max_tokens,
+                max_tokens=budget,
             )
             try:
                 payload = extract_json(response.text)
             except LLMResponseFormatError as error:
                 last_error = error
-                logger.warning(
-                    "Unparsable JSON reply (attempt %d): %s", attempt + 1, error
-                )
+                if response.truncated:
+                    budget *= 2
+                    remind = False
+                    logger.warning(
+                        "Reply was cut off by the token budget (attempt %d); "
+                        "retrying with %d tokens",
+                        attempt + 1,
+                        budget,
+                    )
+                else:
+                    remind = True
+                    logger.warning(
+                        "Unparsable JSON reply (attempt %d): %s", attempt + 1, error
+                    )
                 continue
 
             missing = [key for key in required_keys if key not in payload]
@@ -354,6 +387,7 @@ class LLMClient:
                 last_error = LLMResponseFormatError(
                     f"reply is missing required key(s): {', '.join(missing)}"
                 )
+                remind = True
                 logger.warning("%s", last_error)
                 continue
 
@@ -374,15 +408,20 @@ class LLMClient:
         attempts: int,
         used_fallback: bool,
     ) -> LLMResponse:
+        thinks = self._supports_reasoning(model)
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": max_tokens,
+            # A thinking model spends this budget on reasoning before it writes
+            # a word of the reply, so the headroom is added only when thinking
+            # is actually left on (see LLM_THINKING_TOKEN_HEADROOM).
+            "max_tokens": max_tokens
+            + (config.LLM_THINKING_TOKEN_HEADROOM if thinks and not simple_task else 0),
         }
         if json_mode and model not in self._no_json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        if simple_task and self._supports_reasoning(model):
+        if simple_task and thinks:
             kwargs["reasoning_effort"] = config.LLM_REASONING_FOR_SIMPLE_TASKS
 
         self._wait_for_turn()
@@ -412,11 +451,11 @@ class LLMClient:
         latency = time.monotonic() - started
         text = (raw.choices[0].message.content or "").strip()
         usage = getattr(raw, "usage", None)
+        finish = str(getattr(raw.choices[0], "finish_reason", "stop") or "stop")
 
         if not text:
             # An empty reply is not an exception in LiteLLM, but it is useless
             # to every caller, so turn it into one here.
-            finish = getattr(raw.choices[0], "finish_reason", "unknown")
             raise LLMError(f"{model} returned an empty reply (finish_reason={finish})")
 
         response = LLMResponse(
@@ -427,6 +466,7 @@ class LLMClient:
             prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
             completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             latency_seconds=latency,
+            finish_reason=finish,
         )
         logger.debug(
             "LLM %s: %d prompt + %d completion tokens in %.1fs",
