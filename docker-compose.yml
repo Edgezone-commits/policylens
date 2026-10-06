@@ -1,0 +1,68 @@
+# PolicyLens: API on 8000, UI on 8501.
+#
+#   cp .env.example .env     # then put a real GOOGLE_API_KEY in it
+#   docker compose up --build
+#   docker compose run --rm api python scripts/ingest_docs.py
+#
+# Both services run the SAME image with different commands -- see the
+# Dockerfile for why one image rather than two.
+
+services:
+  api:
+    build: .
+    image: policylens:latest
+    command:
+      - uvicorn
+      - src.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # The index and the query log, kept outside the container so they
+      # survive a rebuild. Re-ingesting an 82-page Act is not something to
+      # pay for every time the image changes.
+      - policylens-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      # Generous: the API loads the ~90MB embedding model and opens Chroma
+      # before it serves anything, which takes tens of seconds on a cold
+      # start. A tighter window would restart a container that was working.
+      start_period: 90s
+      retries: 3
+    restart: unless-stopped
+
+  ui:
+    build: .
+    image: policylens:latest
+    command:
+      - streamlit
+      - run
+      - frontend/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+      - --browser.gatherUsageStats=false
+    ports:
+      - "8501:8501"
+    environment:
+      # Reaches the API by service name on the compose network, not
+      # 127.0.0.1 -- inside the UI container, localhost is the UI.
+      POLICYLENS_API_URL: http://api:8000
+    depends_on:
+      api:
+        # Waits for /health, not just for the process to exist. The UI's first
+        # action is to call /health, and doing that before the embedding model
+        # has loaded shows the user "API unreachable" on a system that is
+        # merely still starting.
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  policylens-data:

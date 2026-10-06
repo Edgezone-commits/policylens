@@ -1,0 +1,38 @@
+# Keep the build context small and the image clean.
+#
+# data/ matters most: the Chroma index and the source PDFs can be hundreds of
+# megabytes, and they belong in a volume rather than a layer -- an index baked
+# into the image would be stale the moment a document was added.
+data/
+*.pdf
+
+# Secrets never enter the build context. The API key reaches the container
+# through env_file at run time.
+.env
+
+# Build artefacts of the evaluation, not source.
+evaluation/results/
+
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Docs and tests are not needed to run the services. Tests run in CI against
+# the repo, not against the image.
+tests/
+docs/
+*.md
+!README.md
+
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
