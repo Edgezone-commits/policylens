@@ -27,7 +27,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 # This is a LiteLLM model string ("<provider>/<model>"). It is the ONLY place
 # the model is named, so swapping providers is a one-line change. The agent
 # code never mentions Gemini.
-LLM_MODEL: str = os.getenv("POLICYLENS_MODEL", "gemini/gemini-2.5-flash")
+#
+# gemini-2.5-flash was the original default and had to be changed: Google now
+# refuses it for keys created after its retirement ("no longer available to new
+# users", HTTP 404), so a fresh clone with a fresh key could not make a single
+# call. Anyone reading an older commit and wondering why the model moved: that
+# is why. The free tier's model names are not stable, and
+# scripts/check_models.py lists what a given key can actually reach.
+LLM_MODEL: str = os.getenv("POLICYLENS_MODEL", "gemini/gemini-3.8-flash")
 
 # Fallback used only if the primary model errors (e.g. daily quota exhausted).
 # The Groq free tier is far more generous per day, which makes it a useful
@@ -148,6 +155,20 @@ MAX_RETRIES: int = 2
 # this ratio or better. 85 tolerates whitespace and punctuation noise while
 # still catching a fabricated quote. Below this we escalate to the LLM judge.
 CITATION_FUZZY_MATCH_THRESHOLD: int = 85
+
+# Shortest quote that can be verified at all. WHY a floor: the fuzzy check is a
+# PARTIAL match (does this quote appear somewhere inside the chunk?), and a
+# partial match of three or four words succeeds against almost any legal prose
+# -- "the employer shall" scores 100 against a chunk that says nothing about
+# the question. Such a quote would be stamped "verified" while supporting
+# nothing, which is worse than no citation at all. Quotes below this length are
+# rejected outright and the analyzer is asked again.
+MIN_CITATION_QUOTE_CHARS: int = 40
+
+# Characters of each chunk shown to the analyzer. Chunks are capped at
+# CHUNK_SIZE already, so this only bites on an unusually long one; it exists so
+# a malformed chunk cannot blow the context window of a 5-chunk prompt.
+EVIDENCE_MAX_CHARS_PER_CHUNK: int = 1600
 
 # Confidence weights. WHY a deterministic formula instead of asking the LLM to
 # rate its own confidence: self-reported confidence is poorly calibrated and
