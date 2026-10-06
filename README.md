@@ -255,9 +255,11 @@ docker compose up --build       # API on :8000, UI on :8501
 docker compose run --rm api python scripts/ingest_docs.py
 ```
 
-> The Docker daemon was unavailable on the development machine, so the image
-> has never been built. `docker compose config` validates; the build itself is
-> unproven and CI will be its first real run.
+> Built and verified in CI rather than locally — the development machine is
+> Windows 11 Home without WSL, so Docker Desktop's Linux engine could not
+> start. The `docker` job in CI builds the image, asserts it runs as the
+> non-root `policylens` user, and checks the embedding model was baked in so
+> the container starts offline. All three pass.
 
 ### API by example
 
