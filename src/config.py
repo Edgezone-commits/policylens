@@ -236,6 +236,21 @@ CONFIDENCE_PENALTY_PER_RETRY: float = 0.10  # each retry signals a shaky answer
 
 
 # ---------------------------------------------------------------------------
+# API / UI
+# ---------------------------------------------------------------------------
+# Where the Streamlit UI looks for the API. The UI reaches the agent only
+# over HTTP, never by importing it: that keeps the API the single contract,
+# so anything the UI can show is something another client could get too,
+# and it keeps the 100MB embedding model out of the UI process.
+API_BASE_URL: str = os.getenv("POLICYLENS_API_URL", "http://127.0.0.1:8000")
+
+# Longer than it looks necessary: one answer is 2-5 LLM calls, each
+# throttled, and a cold model chain can spend a minute failing over before
+# the first token. A UI that gave up at 30s would report the system as
+# broken while it was working.
+API_TIMEOUT_SECONDS: float = float(os.getenv("POLICYLENS_API_TIMEOUT", "300"))
+
+# ---------------------------------------------------------------------------
 # Storage / logging
 # ---------------------------------------------------------------------------
 SQLITE_DB_PATH: Path = PROJECT_ROOT / "data" / "policylens.db"
