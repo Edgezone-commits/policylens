@@ -115,6 +115,11 @@ class AgentState(TypedDict, total=False):
     verified_count: int
     unverified_count: int
     verified_ratio: float
+    # Set when the graph was built without the verifier. Distinguishes
+    # "nothing could be confirmed" from "nothing was checked", which the
+    # responder must not confuse: the first is grounds to withdraw the
+    # answer, the second is the evaluation's control arm.
+    verification_skipped: bool
 
     # -- loop control ---------------------------------------------------
     retry_count: int

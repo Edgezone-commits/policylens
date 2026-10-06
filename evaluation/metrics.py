@@ -100,7 +100,12 @@ class Graded:
     # Per-group fact verdicts, empty for unanswerable questions.
     facts: list[bool] = field(default_factory=list)
     missing_facts: list[list[str]] = field(default_factory=list)
-    cited_expected_document: bool | None = None
+    # True only when EVERY document the answer needs was cited. For a
+    # cross-document question that is the whole point: citing one of the
+    # two is a half answer, and a metric that accepted it would report
+    # cross-document grounding the system never achieved.
+    cited_expected_documents: bool | None = None
+    cross_document: bool = False
     verified_citations: int = 0
     total_citations: int = 0
     top_similarity: float = 0.0
@@ -136,6 +141,7 @@ def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) 
         "question": item.question,
         "topic": item.topic,
         "answerable": item.answerable,
+        "cross_document": item.cross_document,
         "status": status,
         "confidence": float(answer.get("confidence") or 0.0),
         "verified_citations": verified,
@@ -169,15 +175,15 @@ def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) 
         if not ok
     ]
     cited_expected = (
-        item.expected_document in cited_documents
-        if item.expected_document
+        all(document in cited_documents for document in item.expected_documents)
+        if item.expected_documents
         else None
     )
     return Graded(
         outcome="CORRECT" if all(verdicts) else "WRONG_ANSWER",
         facts=verdicts,
         missing_facts=missing,
-        cited_expected_document=cited_expected,
+        cited_expected_documents=cited_expected,
         **common,
     )
 
@@ -208,8 +214,10 @@ def aggregate(results: list[Graded]) -> dict[str, Any]:
     citations_total = sum(r.total_citations for r in scored)
     citations_verified = sum(r.verified_citations for r in scored)
     recall_checked = [
-        r for r in asserted if r.cited_expected_document is not None
+        r for r in asserted if r.cited_expected_documents is not None
     ]
+    cross = [r for r in answerable if r.cross_document]
+    cross_asserted = [r for r in cross if r.status in ANSWERED_STATUSES]
 
     return {
         "questions": len(results),
@@ -234,9 +242,23 @@ def aggregate(results: list[Graded]) -> dict[str, Any]:
         # -- grounding ---------------------------------------------------
         "citation_verification_rate": _rate(citations_verified, citations_total),
         "citations_total": citations_total,
-        "retrieval_recall": _rate(
-            len([r for r in recall_checked if r.cited_expected_document]),
+        "citation_recall": _rate(
+            len([r for r in recall_checked if r.cited_expected_documents]),
             len(recall_checked),
+        ),
+        # -- cross-document, broken out ----------------------------------
+        #
+        # Reported on its own because it is the harder half and a combined
+        # figure hides it: 28 single-document questions would swamp 10
+        # cross-document ones, and a system that silently answers every
+        # cross-document question from one document would still look fine.
+        "cross_document_questions": len(cross),
+        "cross_document_accuracy": _rate(
+            len([r for r in cross_asserted if r.correct]), len(cross_asserted)
+        ),
+        "cross_document_both_cited": _rate(
+            len([r for r in cross_asserted if r.cited_expected_documents]),
+            len(cross_asserted),
         ),
         # -- is the confidence formula worth keeping ---------------------
         #
@@ -276,3 +298,59 @@ def _counter(values: Iterable[str]) -> dict[str, int]:
     for value in values:
         counts[value] = counts.get(value, 0) + 1
     return dict(sorted(counts.items()))
+
+
+# ---------------------------------------------------------------------------
+# Retrieval, measured on its own
+# ---------------------------------------------------------------------------
+#
+# WHY this is separate from everything above, and worth having twice over:
+#
+#   * It needs NO LLM. It asks the vector store directly, so the whole 53
+#     questions can be measured for free, as often as wanted, while the daily
+#     quota caps end-to-end runs at a handful of questions. On a free tier
+#     that is the difference between a metric and an anecdote.
+#   * It isolates blame. If an answer is wrong, "was the evidence even
+#     retrieved" is the first question, and citation_recall cannot answer it:
+#     a citation is only produced AFTER the analyzer has read the chunks, so a
+#     low figure there could mean bad retrieval or a bad draft. Recall@k
+#     separates the two.
+
+
+def recall_at_k(retrieved_documents: Iterable[str], expected: Iterable[str]) -> bool:
+    """Did the top-k passages include every document the answer needs?
+
+    `all` rather than `any`, for the same reason cited_expected_documents uses
+    it: for a cross-document question, retrieving one of the two documents is
+    not enough to answer it, so counting it as a hit would overstate what the
+    retriever delivered.
+    """
+    found = set(retrieved_documents)
+    wanted = set(expected)
+    return bool(wanted) and wanted <= found
+
+
+def aggregate_recall(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Roll up per-question retrieval results.
+
+    Each row: {"cross_document": bool, "hit": bool, "best_similarity": float,
+    "above_threshold": int}.
+    """
+    if not rows:
+        return {
+            "questions": 0,
+            "recall_at_k": None,
+            "recall_at_k_single": None,
+            "recall_at_k_cross": None,
+            "mean_best_similarity": None,
+        }
+
+    single = [r for r in rows if not r["cross_document"]]
+    cross = [r for r in rows if r["cross_document"]]
+    return {
+        "questions": len(rows),
+        "recall_at_k": _rate(sum(r["hit"] for r in rows), len(rows)),
+        "recall_at_k_single": _rate(sum(r["hit"] for r in single), len(single)),
+        "recall_at_k_cross": _rate(sum(r["hit"] for r in cross), len(cross)),
+        "mean_best_similarity": _mean([r["best_similarity"] for r in rows]),
+    }

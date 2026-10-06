@@ -721,3 +721,93 @@ def test_a_number_elsewhere_in_the_chunk_does_not_vouch_for_the_quote():
         chunk_text,
     )
     assert divergences == ["the passage does not say 'eight'"]
+
+
+# ---------------------------------------------------------------------------
+# The evaluation's control arm: the graph built without the verifier
+# ---------------------------------------------------------------------------
+#
+# verify=False exists to measure what verification is worth. These tests pin
+# the two things that would make that measurement dishonest: an unchecked
+# answer must not claim to be checked, and a checked answer that fails must
+# still be withdrawn when verification IS on.
+
+
+def test_without_the_verifier_the_draft_is_published_unchecked():
+    """The control arm has to actually answer, or the comparison measures nothing."""
+    store = FakeStore([chunk("act::p8::c1", PROBATION_TEXT)])
+    llm = ScriptedLLM(
+        analyzer=[
+            {
+                "answer": "A worker may be kept on probation for at most six months.",
+                "citations": [{"evidence": 1, "quote": PROBATION_QUOTE}],
+                "insufficient_evidence": False,
+            }
+        ]
+    )
+    answer = PolicyLensAgent(store=store, llm=llm, verify=False).ask(  # type: ignore[arg-type]
+        "What is the maximum probation period?"
+    )
+
+    assert answer.status == "ANSWERED"
+    assert node_sequence(answer) == ["router", "retriever", "analyzer", "responder"]
+    # No judge, no verifier: one fewer stage and no extra calls.
+    assert "verifier" not in node_sequence(answer)
+    assert answer.usage.calls == 2
+
+
+def test_an_unchecked_citation_never_claims_to_be_verified():
+    """Otherwise the control arm would look like the real thing in every log."""
+    store = FakeStore([chunk("act::p8::c1", PROBATION_TEXT)])
+    llm = ScriptedLLM(
+        analyzer=[
+            {
+                "answer": "Probation is six months.",
+                "citations": [{"evidence": 1, "quote": PROBATION_QUOTE}],
+                "insufficient_evidence": False,
+            }
+        ]
+    )
+    answer = PolicyLensAgent(store=store, llm=llm, verify=False).ask(  # type: ignore[arg-type]
+        "What is the maximum probation period?"
+    )
+
+    citation = answer.citations[0]
+    assert citation["verified"] is False
+    assert citation["method"] == "unchecked"
+    assert answer.verified_count == 0
+
+
+def test_a_fabricated_quote_survives_without_the_verifier_and_is_caught_with_it():
+    """The whole claim of the project, as one comparison.
+
+    Same scripted model, same fabricated quote. With verification the answer
+    is withdrawn; without it, the fabrication is published. This is the
+    measurement the evaluation's ON/OFF arms are reporting.
+    """
+    fabricated = (
+        "A labour may be kept on probation for a maximum period of two years "
+        "from the date of appointment."
+    )
+    draft = {
+        "answer": "A worker may be kept on probation for up to two years.",
+        "citations": [{"evidence": 1, "quote": fabricated}],
+        "insufficient_evidence": False,
+    }
+
+    with_verification = PolicyLensAgent(
+        store=FakeStore([chunk("act::p8::c1", PROBATION_TEXT)]),
+        llm=ScriptedLLM(analyzer=[draft, draft], judge=[{"supported": False}] * 4),  # type: ignore[arg-type]
+    ).ask("What is the maximum probation period?")
+
+    without_verification = PolicyLensAgent(
+        store=FakeStore([chunk("act::p8::c1", PROBATION_TEXT)]),
+        llm=ScriptedLLM(analyzer=[draft]),  # type: ignore[arg-type]
+        verify=False,
+    ).ask("What is the maximum probation period?")
+
+    assert with_verification.status == "INSUFFICIENT_EVIDENCE"
+    assert with_verification.citations == []
+
+    assert without_verification.status == "ANSWERED"
+    assert "two years" in without_verification.answer

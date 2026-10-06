@@ -71,8 +71,15 @@ def compute_confidence(
     return round(max(0.0, min(1.0, score)), 3)
 
 
-def build_responder_node() -> Callable[[AgentState], dict]:
-    """Create the responder node. Takes no dependencies -- it only reads state."""
+def build_responder_node(verify: bool = True) -> Callable[[AgentState], dict]:
+    """Create the responder node. Reads state; holds no dependencies.
+
+    `verify=False` matches a graph built without the verifier. It changes one
+    thing only: an answer whose citations were never CHECKED is not treated as
+    an answer whose citations all FAILED. Those look identical in the state
+    (verified_count == 0) and mean opposite things -- the first is the
+    evaluation's control arm, the second is grounds to withdraw the answer.
+    """
 
     def responder_node(state: AgentState) -> dict:
         # -- pipeline failure -------------------------------------------
@@ -109,6 +116,9 @@ def build_responder_node() -> Callable[[AgentState], dict]:
 
         citations = state.get("citations") or []
         verified_count = state.get("verified_count", 0)
+        # Trust the graph that built this node over the state, which a test or
+        # a partially run graph could leave unset.
+        verification_skipped = not verify or state.get("verification_skipped", False)
 
         # -- nothing to stand on ----------------------------------------
         # Covers all three ways an answer can fail to be supported: retrieval
@@ -118,7 +128,9 @@ def build_responder_node() -> Callable[[AgentState], dict]:
         # thing: this system will not assert what it cannot show.
         no_evidence = not state.get("chunks")
         analyzer_declined = state.get("analyzer_abstained", False)
-        nothing_verified = bool(citations) and verified_count == 0
+        nothing_verified = (
+            bool(citations) and verified_count == 0 and not verification_skipped
+        )
 
         if no_evidence or analyzer_declined or nothing_verified:
             if no_evidence:
@@ -156,7 +168,15 @@ def build_responder_node() -> Callable[[AgentState], dict]:
 
         # -- an answer, fully or partly verified -------------------------
         unverified_count = len(citations) - verified_count
-        status: Status = "ANSWERED" if unverified_count == 0 else "PARTIALLY_VERIFIED"
+        if verification_skipped:
+            # PARTIALLY_VERIFIED would be a lie here: it means "we checked and
+            # some quotes failed", and nothing was checked. ANSWERED is the
+            # honest label for an unchecked draft, and the citations still
+            # carry method="unchecked" so no individual quote claims
+            # otherwise.
+            status: Status = "ANSWERED"
+        else:
+            status = "ANSWERED" if unverified_count == 0 else "PARTIALLY_VERIFIED"
         confidence = compute_confidence(
             verified_ratio=state.get("verified_ratio", 0.0),
             top_similarity=state.get("top_similarity", 0.0),

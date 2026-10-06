@@ -56,21 +56,83 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from evaluation import dataset  # noqa: E402
-from evaluation.metrics import Graded, aggregate, grade  # noqa: E402
+from evaluation.metrics import (  # noqa: E402
+    Graded,
+    aggregate,
+    aggregate_recall,
+    grade,
+    recall_at_k,
+)
 from src import config  # noqa: E402
 from src.agent.graph import PolicyLensAgent  # noqa: E402
+from src.retrieval.store import VectorStore  # noqa: E402
 
 logger = logging.getLogger("evaluate")
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "evaluation" / "results"
 
 GROUPS = {
+    "single": dataset.SINGLE_DOCUMENT,
+    "cross": dataset.CROSS_DOCUMENT,
     "answerable": dataset.ANSWERABLE,
     "out-of-domain": dataset.OUT_OF_DOMAIN,
     "adversarial": dataset.ADVERSARIAL,
-    "unanswerable": dataset.OUT_OF_DOMAIN + dataset.ADVERSARIAL,
+    "unanswerable": dataset.UNANSWERABLE,
     "all": dataset.ALL_QUESTIONS,
 }
+
+
+def measure_recall(
+    questions: list[dataset.Question], store: VectorStore, k: int
+) -> tuple[list[dict], dict]:
+    """Measure retrieval alone, with no LLM involved.
+
+    Worth running every time, and separately from the rest: it asks the vector
+    store directly, so the whole set can be measured for free as often as
+    wanted, while the daily quota caps end-to-end runs at a handful of
+    questions. It also isolates blame -- if an answer is wrong, "was the
+    evidence even retrieved" is the first question, and the citation-based
+    recall cannot answer it, because citations are produced only after the
+    analyzer has read the chunks.
+
+    Only answerable questions are measured. For an unanswerable one there is
+    no chunk that SHOULD come back, so recall is undefined rather than zero.
+
+    A LOWER BOUND, not the retriever's live behaviour. This searches on the
+    question AS ASKED; the running system searches on the router's rewritten
+    query, which is often better targeted. Measured on this corpus the gap is
+    real: "Must a female labour do anything after her maternity leave ends?"
+    misses here and was answered correctly end to end, because the rewrite
+    reached the Rules chunk that the raw wording did not. Treated as a floor
+    the figure is still worth having -- a miss means the raw question cannot
+    reach the evidence -- but it must not be quoted as the retriever's ceiling.
+    """
+    rows: list[dict] = []
+    for item in questions:
+        if not item.expected_documents:
+            continue
+        # threshold=0.0: this measures the retriever's ranking, not the
+        # relevance gate. The gate is calibrated separately in
+        # scripts/calibrate_threshold.py, and mixing the two would make a
+        # recall miss indistinguishable from a deliberate abstention.
+        results = store.retrieve(item.question, top_k=k, threshold=0.0)
+        documents = [
+            (result.get("metadata") or result).get("source_document")
+            for result in results
+        ]
+        best = max((result.get("similarity", 0.0) for result in results), default=0.0)
+        rows.append(
+            {
+                "question": item.question,
+                "topic": item.topic,
+                "cross_document": item.cross_document,
+                "expected": list(item.expected_documents),
+                "retrieved": documents,
+                "hit": recall_at_k(documents, item.expected_documents),
+                "best_similarity": round(best, 4),
+            }
+        )
+    return rows, aggregate_recall(rows)
 
 
 def run(questions: list[dataset.Question], agent: PolicyLensAgent) -> list[Graded]:
@@ -137,10 +199,24 @@ def print_report(results: list[Graded], totals: dict) -> None:
     print(f"  Citation verification    "
           f"{_pct(totals['citation_verification_rate']):>8}   "
           f"of {totals['citations_total']} quotes, confirmed against the passage")
-    print(f"  Retrieval recall         {_pct(totals['retrieval_recall']):>8}   "
-          f"cited the document that holds the answer")
+    print(f"  Citation recall          {_pct(totals['citation_recall']):>8}   "
+          f"cited every document the answer needs")
     print(f"  Overall correct          {_pct(totals['overall_correct_rate']):>8}   "
           f"right decision, whichever decision was right")
+
+    if totals["cross_document_questions"]:
+        print(f"\n{line}\nCROSS-DOCUMENT, BROKEN OUT\n{line}")
+        print(
+            "Reported on its own because it is the harder half and a combined "
+            "figure hides it:\nanswering every cross-document question from "
+            "one document alone would still look fine.\n"
+        )
+        print(f"  Questions             {totals['cross_document_questions']:>8}")
+        print(f"  Answer accuracy       "
+              f"{_pct(totals['cross_document_accuracy']):>8}")
+        print(f"  Cited BOTH documents  "
+              f"{_pct(totals['cross_document_both_cited']):>8}   "
+              f"citing one of two is a half answer")
 
     print(f"\n{line}\nIS THE CONFIDENCE FORMULA WORTH KEEPING\n{line}")
     correct = totals["mean_confidence_correct"]
@@ -185,6 +261,72 @@ def print_report(results: list[Graded], totals: dict) -> None:
     print(f"  total tokens   {totals['total_tokens']}")
 
 
+def print_recall(rows: list[dict], totals: dict, k: int) -> None:
+    """Print the retrieval-only report."""
+    line = "=" * 74
+    print(f"\n{line}\nRETRIEVAL ONLY -- Recall@{k}, no LLM involved\n{line}")
+    print(
+        "Measured straight against the vector store, so it costs no quota and "
+        "covers every\nanswerable question rather than the handful a daily "
+        "limit allows end to end.\n"
+        "A LOWER BOUND: this searches on the question as asked, while the "
+        "running system\nsearches on the router's rewritten query, which is "
+        "often better targeted.\n"
+    )
+    print(f"  Recall@{k}, all answerable   "
+          f"{_pct(totals['recall_at_k']):>8}  ({totals['questions']} questions)")
+    print(f"  Recall@{k}, single-document  "
+          f"{_pct(totals['recall_at_k_single']):>8}")
+    print(f"  Recall@{k}, cross-document   "
+          f"{_pct(totals['recall_at_k_cross']):>8}  "
+          f"needs BOTH documents in the top {k}")
+    print(f"  mean best similarity      {_num(totals['mean_best_similarity']):>8}")
+
+    misses = [r for r in rows if not r["hit"]]
+    if misses:
+        print(f"\n{line}\nEVERY MISS\n{line}")
+        print(
+            "A miss here is an upper bound on the answer: evidence that was "
+            "never retrieved\ncannot be cited.\n"
+        )
+        for r in misses:
+            print(f"  {r['question']}")
+            print(f"      wanted   : {r['expected']}")
+            print(f"      retrieved: {r['retrieved']}")
+            print(f"      best similarity {r['best_similarity']}\n")
+
+
+def save_recall(rows: list[dict], totals: dict, k: int) -> Path:
+    """Write the retrieval-only run to evaluation/results/ as JSON.
+
+    Named apart from the end-to-end file because the two measure different
+    things, and a reader who found one where they expected the other would
+    quote a retrieval number as an answer-accuracy number.
+    """
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = RESULTS_DIR / f"recall_{datetime.now():%Y%m%d_%H%M%S}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "ran_at": datetime.now().isoformat(timespec="seconds"),
+                "k": k,
+                "dataset": dataset.summary(),
+                "embedding_model": config.EMBEDDING_MODEL,
+                "note": (
+                    "Retrieval only: no LLM was called, and the relevance "
+                    "threshold was not applied. This measures the retriever's "
+                    "ranking, not the abstention gate."
+                ),
+                "totals": totals,
+                "results": rows,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def _pct(value: float | None) -> str:
     return "n/a" if value is None else f"{value * 100:.0f}%"
 
@@ -193,15 +335,22 @@ def _num(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.3f}"
 
 
-def save(results: list[Graded], totals: dict) -> Path:
-    """Write the full run to evaluation/results/ as JSON."""
+def save(results: list[Graded], totals: dict, verification: str = "on") -> Path:
+    """Write the full run to evaluation/results/ as JSON.
+
+    The arm is recorded in the file, because an unverified run and a
+    verified one are not comparable and a results file that does not say
+    which it is would eventually be quoted as if it were the other.
+    """
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    path = RESULTS_DIR / f"evaluation_{datetime.now():%Y%m%d_%H%M%S}.json"
+    suffix = "" if verification == "on" else "_noverify"
+    path = RESULTS_DIR / f"evaluation_{datetime.now():%Y%m%d_%H%M%S}{suffix}.json"
     path.write_text(
         json.dumps(
             {
                 "ran_at": datetime.now().isoformat(timespec="seconds"),
                 "dataset": dataset.summary(),
+                "verification": verification,
                 "config": {
                     "model": config.LLM_MODEL,
                     "fallback_models": list(config.LLM_FALLBACK_MODELS),
@@ -242,6 +391,26 @@ def main() -> int:
     parser.add_argument(
         "--no-save", action="store_true", help="Print the report, write no file"
     )
+    parser.add_argument(
+        "--recall-only",
+        action="store_true",
+        help=(
+            "Measure Recall@k against the vector store and stop. Needs no LLM, "
+            "so it runs the whole set for free and ignores the daily quota."
+        ),
+    )
+    parser.add_argument(
+        "--k", type=int, default=config.RETRIEVAL_TOP_K, help="k for Recall@k"
+    )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help=(
+            "The control arm: build the graph WITHOUT the verifier, so the "
+            "analyzer's draft is published unchecked. Use it to measure what "
+            "verification is worth -- not a production mode."
+        ),
+    )
     args = parser.parse_args()
 
     config.configure_logging()
@@ -250,10 +419,38 @@ def main() -> int:
     if args.limit is not None:
         questions = questions[: max(1, args.limit)]
 
-    agent = PolicyLensAgent()
+    if args.recall_only:
+        store = VectorStore()
+        if store.count() == 0:
+            print("The index is empty. Run scripts/ingest_docs.py first.")
+            return 1
+        rows, recall_totals = measure_recall(questions, store, args.k)
+        if not rows:
+            print(
+                "No answerable questions in this group, so recall is "
+                "undefined: there is no chunk that SHOULD come back."
+            )
+            return 1
+        print_recall(rows, recall_totals, args.k)
+        if not args.no_save:
+            path = save_recall(rows, recall_totals, args.k)
+            print(f"\nFull per-question retrieval results: "
+                  f"{path.relative_to(Path.cwd())}")
+        return 0
+
+    agent = PolicyLensAgent(verify=not args.no_verify)
     if agent.store.count() == 0:
         print("The index is empty. Run scripts/ingest_docs.py first.")
         return 1
+
+    if args.no_verify:
+        print(
+            "CONTROL ARM: the verifier is OFF, so the analyzer's draft is "
+            "published unchecked.\nCitation verification will read 0% by "
+            "construction -- nothing was checked. Compare the\nanswer "
+            "accuracy and false answer rate against a verified run, not the "
+            "citation\nfigures or the confidence.\n"
+        )
 
     print(f"Evaluating against {agent.store.count()} chunks "
           f"from {len(agent.store.document_names())} document(s)\n")
@@ -267,7 +464,7 @@ def main() -> int:
     print_report(results, totals)
 
     if not args.no_save:
-        path = save(results, totals)
+        path = save(results, totals, "on" if not args.no_verify else "off")
         print(f"\nFull per-question results: {path.relative_to(Path.cwd())}")
 
     # Non-zero if the system asserted something the documents do not support.

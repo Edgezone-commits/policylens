@@ -88,14 +88,32 @@ def after_retriever(state: AgentState) -> Literal["analyzer", "retry", "responde
     return "responder"
 
 
-def after_analyzer(state: AgentState) -> Literal["verifier", "retry", "responder"]:
-    if state.get("error"):
-        return "responder"
-    if state.get("analyzer_abstained"):
-        # The passages were topically close enough to retrieve but did not
-        # answer the question. A wider net may reach the one that does.
-        return "retry" if _retries_left(state) else "responder"
-    return "verifier"
+def make_after_analyzer(verify: bool = True):
+    """Build the analyzer's outgoing edge.
+
+    A factory because the destination depends on how the graph was built, and
+    LangGraph reads the return value as the node name: with verification off
+    there is no "verifier" node to name.
+    """
+
+    # Annotated `str`, not a Literal, because LangGraph reads a Literal
+    # annotation to infer which nodes an edge may reach -- and with
+    # verification off there is no "verifier" node, so inferring it raises at
+    # compile time. build_graph passes the reachable names explicitly instead.
+    def after_analyzer(state: AgentState) -> str:
+        if state.get("error"):
+            return "responder"
+        if state.get("analyzer_abstained"):
+            # The passages were topically close enough to retrieve but did not
+            # answer the question. A wider net may reach the one that does.
+            return "retry" if _retries_left(state) else "responder"
+        return "verifier" if verify else "responder"
+
+    return after_analyzer
+
+
+# Kept as a module-level name because the tests and any reader expect it.
+after_analyzer = make_after_analyzer(verify=True)
 
 
 def after_verifier(state: AgentState) -> Literal["retry", "responder"]:
@@ -208,28 +226,44 @@ class AgentAnswer:
 # ---------------------------------------------------------------------------
 
 
-def build_graph(llm: LLMClient, store: VectorStore):
+def build_graph(llm: LLMClient, store: VectorStore, verify: bool = True):
     """Wire the nodes into a compiled LangGraph.
 
     The LLM client and vector store are passed in, not constructed here, so
     tests can run the real control flow against a scripted LLM and an
     in-memory store -- the retry and abstention paths are the most important
     behaviour in the system and must be testable without network calls.
+
+    `verify=False` builds the graph WITHOUT the verifier, so the analyzer's
+    draft is published unchecked. It exists for one reason: the evaluation's
+    control arm. The claim this project rests on is that checking every quote
+    against its passage prevents confident wrong answers, and that claim is
+    only measurable against a build that does not check. It is not a
+    production mode -- citations come through marked method="unchecked", and
+    the responder records that verification was skipped, so nothing can
+    present an unchecked answer as a verified one.
     """
     graph = StateGraph(AgentState)
 
     graph.add_node("router", build_router_node(llm, store))
     graph.add_node("retriever", build_retriever_node(store))
     graph.add_node("analyzer", build_analyzer_node(llm))
-    graph.add_node("verifier", build_verifier_node(llm, store))
     graph.add_node("retry", retry_node)
-    graph.add_node("responder", build_responder_node())
+    graph.add_node("responder", build_responder_node(verify=verify))
 
     graph.add_edge(START, "router")
     graph.add_conditional_edges("router", after_router)
     graph.add_conditional_edges("retriever", after_retriever)
-    graph.add_conditional_edges("analyzer", after_analyzer)
-    graph.add_conditional_edges("verifier", after_verifier)
+    graph.add_conditional_edges(
+        "analyzer",
+        make_after_analyzer(verify),
+        ["verifier", "retry", "responder"] if verify else ["retry", "responder"],
+    )
+
+    if verify:
+        graph.add_node("verifier", build_verifier_node(llm, store))
+        graph.add_conditional_edges("verifier", after_verifier)
+
     graph.add_edge("retry", "retriever")
     graph.add_edge("responder", END)
 
@@ -249,10 +283,12 @@ class PolicyLensAgent:
         self,
         store: VectorStore | None = None,
         llm: LLMClient | None = None,
+        verify: bool = True,
     ) -> None:
         self.store = store or VectorStore()
         self.llm = llm or get_llm_client()
-        self.graph = build_graph(self.llm, self.store)
+        self.verify = verify
+        self.graph = build_graph(self.llm, self.store, verify=verify)
 
     def ask(self, question: str, source_document: str | None = None) -> AgentAnswer:
         """Answer one question.
