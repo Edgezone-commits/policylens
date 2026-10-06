@@ -22,6 +22,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -30,6 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import litellm  # noqa: E402
+from litellm import exceptions as llm_exceptions  # noqa: E402
 
 from src import config  # noqa: E402
 
@@ -65,6 +67,11 @@ def list_gemini_models(api_key: str) -> list[str]:
     )
 
 
+# Enough for "ok" and nothing more: the probe is charged against the same
+# daily quota as a real question, so it should cost as little as possible.
+_PROBE_TOKENS = 32
+
+
 def check_model(model: str) -> tuple[bool, str]:
     """Try the cheapest possible real call. Returns (ok, detail).
 
@@ -83,20 +90,55 @@ def check_model(model: str) -> tuple[bool, str]:
     if litellm.supports_reasoning(model=model):
         extra["reasoning_effort"] = config.LLM_REASONING_FOR_SIMPLE_TASKS
 
-    try:
-        response = litellm.completion(
+    def call(**overrides: object):
+        return litellm.completion(
             model=model,
             messages=[{"role": "user", "content": "Reply with the single word: ok"}],
             temperature=0.0,
-            max_tokens=32,
-            **extra,
+            **overrides,
         )
+
+    stripped = ""
+    try:
+        try:
+            response = call(max_tokens=_PROBE_TOKENS, **extra)
+        except llm_exceptions.BadRequestError:
+            # The same retry LLMClient._call_once performs: a provider may
+            # REJECT reasoning_effort rather than ignore it, and the spelling
+            # is provider-specific ("disable" is Gemini's; Groq accepts
+            # "none" but not "disable"). Without mirroring that retry this
+            # script reports FAIL for a model the agent uses perfectly well
+            # -- and its one job is to say which models are reachable, so a
+            # false FAIL would argue for deleting a working fallback.
+            if not extra:
+                raise
+            stripped = (
+                " (after dropping reasoning_effort, which this provider"
+                " rejects rather than ignores -- the client retries the"
+                " same way)"
+            )
+            # With reasoning_effort gone, thinking is back ON, and a probe
+            # budget sized for a two-word answer would be spent entirely on
+            # reasoning -- returning the empty string this script exists to
+            # tell apart from a real failure. So pay for the headroom here.
+            response = call(
+                max_tokens=_PROBE_TOKENS + config.LLM_THINKING_TOKEN_HEADROOM
+            )
     except Exception as error:  # noqa: BLE001 -- the point is to report anything
         detail = str(error).replace("\n", " ")
+        # A quota refusal is the common case and deserves to be legible rather
+        # than buried in 300 characters of provider JSON. The daily allowance
+        # is the number that decides how many questions today can hold.
+        quota = re.search(r'"quotaValue":\s*"(\d+)"', detail)
+        if quota:
+            return False, (
+                f"daily free-tier quota exhausted ({quota.group(1)} requests/day "
+                "for this model); the next model in the chain has its own bucket"
+            )
         return False, f"{type(error).__name__}: {detail[:300]}"
 
     reply = (response.choices[0].message.content or "").strip()
-    return True, f"replied {reply[:40]!r}"
+    return True, f"replied {reply[:40]!r}{stripped}"
 
 
 def main() -> int:
@@ -115,21 +157,25 @@ def main() -> int:
     print("CONFIGURED MODELS")
     print("=" * 72)
 
-    failures = 0
-    for label, model in (
-        ("primary ", config.LLM_MODEL),
-        ("fallback", config.LLM_FALLBACK_MODEL),
-    ):
+    chain = [("primary ", config.LLM_MODEL)] + [
+        (f"fallback{position}", model)
+        for position, model in enumerate(config.LLM_FALLBACK_MODELS, start=1)
+    ]
+
+    usable = 0
+    for label, model in chain:
         if not model:
-            print(f"{label}  (none configured)")
             continue
         ok, detail = check_model(model)
         print(f"{label}  {'OK  ' if ok else 'FAIL'}  {model}")
         print(f"          {detail}")
-        if not ok:
-            # The fallback is optional by design, so a missing Groq key is
-            # worth reporting but is not a reason to fail the check.
-            failures += 1 if label.strip() == "primary" else 0
+        usable += 1 if ok else 0
+
+    print()
+    # The chain matters more than any single entry: the free-tier daily limit
+    # is charged per model, so each usable link is another day's worth of
+    # questions. One usable model is a handful of questions a day.
+    print(f"{usable} of {len(chain)} model(s) in the chain are usable right now.")
 
     if args.list_models:
         key = os.getenv("GOOGLE_API_KEY", "")
@@ -146,12 +192,14 @@ def main() -> int:
             print(f"\n{len(names)} model(s). Use one as "
                   f"POLICYLENS_MODEL=gemini/<name> in .env")
 
-    print()
-    if failures:
-        print("The primary model is not usable. Either fix the key in .env, or "
-              "set POLICYLENS_MODEL to a model this key can call "
-              "(python scripts/check_models.py --list).")
-    return 1 if failures else 0
+    if not usable:
+        print("Nothing in the chain can be called. Either fix the key in .env, "
+              "or set POLICYLENS_MODEL / POLICYLENS_FALLBACK_MODELS to models "
+              "this key can reach (python scripts/check_models.py --list).")
+
+    # Non-zero only when NO model is usable. An exhausted primary with a
+    # working fallback is the chain doing its job, not a failed check.
+    return 1 if not usable else 0
 
 
 if __name__ == "__main__":

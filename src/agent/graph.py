@@ -155,6 +155,9 @@ class AgentAnswer:
     question: str
     status: str
     answer: str
+    # The document the question was SCOPED to, if the caller restricted it.
+    # Distinct from where the evidence came from, which is in the citations.
+    source_document: str | None = None
     citations: list[Citation] = field(default_factory=list)
     confidence: float = 0.0
     intent: str = ""
@@ -186,6 +189,7 @@ class AgentAnswer:
             "question": self.question,
             "status": self.status,
             "answer": self.answer,
+            "source_document": self.source_document,
             "citations": [dict(citation) for citation in self.citations],
             "confidence": self.confidence,
             "intent": self.intent,
@@ -266,6 +270,7 @@ class PolicyLensAgent:
                 question="",
                 status="ERROR",
                 answer="",
+                source_document=source_document,
                 error="The question was empty.",
             )
 
@@ -283,6 +288,7 @@ class PolicyLensAgent:
                 question=question,
                 status="ERROR",
                 answer="",
+                source_document=source_document,
                 error=f"{type(error).__name__}: {error}",
             )
 
@@ -293,6 +299,7 @@ class PolicyLensAgent:
             question=question,
             status=final.get("status", "ERROR"),
             answer=final.get("answer", ""),
+            source_document=source_document,
             citations=citations,
             confidence=final.get("confidence", 0.0),
             intent=final.get("intent", ""),

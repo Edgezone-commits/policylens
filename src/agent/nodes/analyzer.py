@@ -130,6 +130,9 @@ def build_analyzer_node(llm: LLMClient) -> Callable[[AgentState], dict]:
                 # five excerpts, reconcile them and compose a cited answer.
                 simple_task=False,
                 required_keys=("answer",),
+                # Not the default cap: this reply carries a verbatim quote
+                # per citation, not just prose. See the config comment.
+                max_tokens=config.LLM_MAX_TOKENS_FOR_CITED_ANSWER,
             )
         except LLMError as error:
             # Unlike the router, there is no safe default for the answer

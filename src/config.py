@@ -36,12 +36,45 @@ load_dotenv(PROJECT_ROOT / ".env")
 # scripts/check_models.py lists what a given key can actually reach.
 LLM_MODEL: str = os.getenv("POLICYLENS_MODEL", "gemini/gemini-3.8-flash")
 
-# Fallback used only if the primary model errors (e.g. daily quota exhausted).
-# The Groq free tier is far more generous per day, which makes it a useful
-# safety net during a live demo.
-LLM_FALLBACK_MODEL: str = os.getenv(
-    "POLICYLENS_FALLBACK_MODEL", "groq/llama-3.3-70b-versatile"
-)
+# Models to try, in order, when the one before it fails.
+#
+# WHY a CHAIN rather than the single fallback this used to be, and why most of
+# it is Gemini rather than another provider: the free-tier daily limit is
+# charged per MODEL, not per key. The quota the API reports when it refuses is
+#   quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier, quotaValue: 20
+# -- twenty requests per day, per model, and a retryDelay of about 22 hours.
+# Measured on this key: with gemini-3.8-flash exhausted, gemini-3.5-flash and
+# gemini-3.1-flash-lite both answered immediately, because each name has its
+# own bucket.
+#
+# That matters beyond a demo. One answer costs 2-5 calls, so twenty requests is
+# four or five questions a day on one model -- and the Phase 6 evaluation needs
+# a few hundred. Chaining sibling models multiplies the budget with the key
+# already in .env, which is the only way this project's own evaluation is
+# runnable for free.
+#
+# Ordered strongest-first: the chain is a quota and outage fallback, so a later
+# model should be a weaker answer, never a wrong one. Groq stays at the end as
+# the one non-Google link, since a Google-wide outage takes every entry above
+# it at once.
+#
+# The Groq entry is gpt-oss-120b rather than a Llama: this account's key cannot
+# reach ANY llama chat model (GET /openai/v1/models lists eleven, of which the
+# only general-purpose chat models are the two gpt-oss sizes and qwen3.8-27b),
+# so the llama-3.3-70b-versatile that used to sit here answered every call with
+# 404 model_not_found. A fallback that cannot be called is worse than none: it
+# spends an attempt and the retry budget to arrive at the same failure. Verify
+# with scripts/check_models.py, which exists for exactly this.
+LLM_FALLBACK_MODELS: list[str] = [
+    model.strip()
+    for model in os.getenv(
+        "POLICYLENS_FALLBACK_MODELS",
+        "gemini/gemini-3.5-flash,"
+        "gemini/gemini-3.1-flash-lite,"
+        "groq/openai/gpt-oss-120b",
+    ).split(",")
+    if model.strip()
+]
 
 # Temperature 0.0 everywhere: this is an extraction-and-citation task, not a
 # creative one. We want the same question to give the same answer, which also
@@ -51,6 +84,18 @@ LLM_TEMPERATURE: float = 0.0
 # Cap on response length. Legal answers are short; a high ceiling just invites
 # the model to pad, which raises the chance it drifts from the cited text.
 LLM_MAX_TOKENS: int = 1024
+
+# The analyzer is the exception, and not because its prose is longer: its
+# reply also carries a VERBATIM QUOTE for every citation it makes. The cap
+# above sizes the answer; this one has to cover the answer plus five or
+# more exact spans copied out of the source, inside JSON, with every quote
+# escaped. Measured on "how much gratuity is a worker entitled to", which
+# the Act spreads across Rule 23, Section 52 and Section 53: six quotes,
+# 8.5k tokens, and a cut-off reply at anything less. A truncated reply is
+# not a shorter answer -- it is no answer at all, reported as a 503 -- so
+# the ceiling is set where the evidence says, and brevity stays the
+# prompt's job rather than the budget's.
+LLM_MAX_TOKENS_FOR_CITED_ANSWER: int = 4096
 
 # Extra budget for models that think before replying. WHY separate from the cap
 # above: a thinking model counts its reasoning against the SAME output budget

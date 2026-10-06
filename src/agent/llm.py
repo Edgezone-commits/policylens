@@ -56,6 +56,33 @@ _SWITCH_PROVIDER = (
 )
 
 
+# A 429 means two different things, and they want opposite responses.
+#
+# A per-MINUTE limit clears in seconds, so backing off is exactly right.
+# A per-DAY free-tier quota reports, verbatim:
+#     "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+#     "retryDelay": "66545s"
+# -- eighteen hours. Backing off 2/4/9/17s against that buys nothing but
+# thirty wasted seconds, and since one answer costs several calls, every
+# one of them pays it again: a measured 88s for a question that takes 10s
+# once the spent model is skipped. So a daily refusal is treated as a dead
+# model for the rest of the run, which is what the fallback chain is for.
+#
+# Keyed on retryDelay rather than the quotaId, because the delay is the
+# fact that matters ("could waiting plausibly help?") and other providers
+# report it too; the PerDay marker is the fallback when it is absent.
+_UNWAITABLE_RETRY_DELAY_SECONDS = 120.0
+
+
+def _is_spent_for_the_day(error: Exception) -> bool:
+    """Is this 429 a daily quota, rather than a per-minute burst limit?"""
+    text = str(error)
+    delay = re.search(r'"retryDelay":\s*"(\d+(?:\.\d+)?)s"', text)
+    if delay:
+        return float(delay.group(1)) > _UNWAITABLE_RETRY_DELAY_SECONDS
+    return "PerDay" in text
+
+
 class LLMError(RuntimeError):
     """Raised when every model and retry has been exhausted."""
 
@@ -210,15 +237,24 @@ class LLMClient:
     def __init__(
         self,
         model: str | None = None,
-        fallback_model: str | None = None,
+        fallback_models: list[str] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
         throttle_seconds: float | None = None,
         max_retries: int | None = None,
     ) -> None:
         self.model = model or config.LLM_MODEL
-        self.fallback_model = (
-            fallback_model if fallback_model is not None else config.LLM_FALLBACK_MODEL
+        self.fallback_models = (
+            list(fallback_models)
+            if fallback_models is not None
+            else list(config.LLM_FALLBACK_MODELS)
+        )
+        # The chain in call order, with the primary first and duplicates
+        # dropped. Deduplicated because a repeated name buys nothing -- the
+        # daily quota is per model, so trying an exhausted one twice just
+        # spends two more seconds proving it is still exhausted.
+        self.model_chain: list[str] = list(
+            dict.fromkeys([self.model, *self.fallback_models])
         )
         self.temperature = config.LLM_TEMPERATURE if temperature is None else temperature
         self.max_tokens = max_tokens or config.LLM_MAX_TOKENS
@@ -232,6 +268,15 @@ class LLMClient:
         # Remembered so one BadRequest does not cost a wasted call on every
         # subsequent prompt.
         self._no_json_mode: set[str] = set()
+        # The same, for reasoning_effort. Separate sets because the two are
+        # rejected independently: Groq takes response_format but refuses
+        # "disable" as a reasoning_effort, and one rejection says nothing
+        # about the other.
+        self._no_reasoning_effort: set[str] = set()
+        # Models whose per-day quota is gone. Process-wide and never
+        # cleared: the reset is ~18 hours away, so nothing in one run will
+        # outlive it.
+        self._spent_today: set[str] = set()
 
     # -- public API ---------------------------------------------------------
 
@@ -257,21 +302,28 @@ class LLMClient:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        models = [self.model]
-        if self.fallback_model and self.fallback_model != self.model:
-            models.append(self.fallback_model)
-
+        models = self.model_chain
         attempts = 0
         last_error: Exception | None = None
 
         for index, model in enumerate(models):
             is_fallback = index > 0
+            if model in self._spent_today:
+                logger.info(
+                    "Skipping %s: its daily quota ran out earlier in this run",
+                    model,
+                )
+                continue
             if is_fallback:
                 if not self._has_credentials(model):
                     logger.warning("Skipping fallback %s: its API key is not set", model)
                     continue
                 logger.warning(
-                    "Falling back to %s after %s failed", model, models[index - 1]
+                    "Falling back to %s (%d of %d in the chain) after %s failed",
+                    model,
+                    index + 1,
+                    len(models),
+                    models[index - 1],
                 )
 
             for retry in range(self.max_retries + 1):
@@ -293,6 +345,16 @@ class LLMClient:
                     break
                 except _RETRYABLE as error:
                     last_error = error
+                    if isinstance(
+                        error, llm_exceptions.RateLimitError
+                    ) and _is_spent_for_the_day(error):
+                        self._spent_today.add(model)
+                        logger.warning(
+                            "%s has used its daily free-tier quota; moving on "
+                            "and not trying it again this run",
+                            model,
+                        )
+                        break
                     if retry == self.max_retries:
                         logger.warning(
                             "%s still failing after %d retries: %s",
@@ -315,6 +377,18 @@ class LLMClient:
                     # A malformed prompt is our bug, not the provider's, and it
                     # fails identically on the fallback. Surface it.
                     raise LLMError(f"{model} rejected the request: {error}") from error
+
+        if models and all(model in self._spent_today for model in models):
+            # The whole chain is out of quota. Said plainly, because the fix
+            # is to wait or to add a model -- and because the alternative is
+            # a page of provider JSON on the run where the quota ran out,
+            # which is exactly when this is hardest to read.
+            raise LLMError(
+                "every model in the chain has used its daily free-tier quota "
+                f"({', '.join(sorted(self._spent_today))}). The quota resets "
+                "about 18 hours after it ran out; until then, add a model to "
+                "POLICYLENS_FALLBACK_MODELS or use a different key."
+            ) from last_error
 
         raise LLMError(
             f"all models failed after {attempts} attempt(s); "
@@ -354,7 +428,29 @@ class LLMClient:
         remind = False
         last_error: LLMResponseFormatError | None = None
 
-        for attempt in range(2):
+        # Two separate allowances, because the two failures are not alike.
+        #
+        # A malformed reply gets ONE reprompt: if the second is also malformed
+        # the prompt is wrong, and a third call just spends quota proving it.
+        #
+        # A truncation is not that. It is the same prompt against too small a
+        # budget, so doubling it is a DIFFERENT request rather than the same one
+        # asked again, and it deserves its own allowance. It previously shared
+        # the one above, which meant the last iteration logged "retrying with
+        # N tokens", computed the bigger budget, and then fell out of the loop
+        # without ever using it -- reporting a cut-off reply as unparsable
+        # JSON. Measured on "how much gratuity is a worker entitled to",
+        # which the Act spreads across Rule 23, Section 52 and Section 53:
+        # six verbatim quotes, one doubling off the analyzer's own cap, and
+        # an answer with 6/6 citations verified. From the DEFAULT cap the
+        # same question needs three, which is why the analyzer carries its
+        # own (see LLM_MAX_TOKENS_FOR_CITED_ANSWER) rather than relying on
+        # this loop to climb there one wasted call at a time.
+        reprompts_left = 1
+        growths_left = 2
+        response: LLMResponse | None = None
+
+        while True:
             response = self.complete(
                 prompt + reminder if remind else prompt,
                 system=system,
@@ -366,32 +462,47 @@ class LLMClient:
                 payload = extract_json(response.text)
             except LLMResponseFormatError as error:
                 last_error = error
-                if response.truncated:
+                if response.truncated and growths_left:
+                    growths_left -= 1
                     budget *= 2
                     remind = False
                     logger.warning(
-                        "Reply was cut off by the token budget (attempt %d); "
-                        "retrying with %d tokens",
-                        attempt + 1,
+                        "Reply was cut off by the token budget; retrying with "
+                        "%d tokens (%d growth(s) left)",
                         budget,
+                        growths_left,
                     )
-                else:
+                    continue
+                if not response.truncated and reprompts_left:
+                    reprompts_left -= 1
                     remind = True
-                    logger.warning(
-                        "Unparsable JSON reply (attempt %d): %s", attempt + 1, error
-                    )
-                continue
+                    logger.warning("Unparsable JSON reply: %s", error)
+                    continue
+                break
 
             missing = [key for key in required_keys if key not in payload]
             if missing:
                 last_error = LLMResponseFormatError(
                     f"reply is missing required key(s): {', '.join(missing)}"
                 )
-                remind = True
-                logger.warning("%s", last_error)
-                continue
+                if reprompts_left:
+                    reprompts_left -= 1
+                    remind = True
+                    logger.warning("%s", last_error)
+                    continue
+                break
 
             return payload, response
+
+        if response is not None and response.truncated:
+            # Name the real cause. "No JSON object found" sends the next reader
+            # after the prompt, when the budget is what ran out -- and the
+            # number here is the one they would need.
+            last_error = LLMResponseFormatError(
+                f"the reply was still cut off at {budget} tokens after "
+                f"exhausting the budget growths; raise LLM_MAX_TOKENS or "
+                f"the caller's max_tokens"
+            )
 
         raise last_error or LLMResponseFormatError("could not obtain JSON from model")
 
@@ -409,19 +520,27 @@ class LLMClient:
         used_fallback: bool,
     ) -> LLMResponse:
         thinks = self._supports_reasoning(model)
+        # Can thinking actually be turned off for this model? Not if the
+        # provider has already refused reasoning_effort -- Groq rejects the
+        # "disable" value outright -- in which case a "simple" task still
+        # pays for reasoning and still needs the budget to cover it.
+        can_disable_thinking = model not in self._no_reasoning_effort
+        thinking_on = thinks and not (simple_task and can_disable_thinking)
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": self.temperature,
             # A thinking model spends this budget on reasoning before it writes
             # a word of the reply, so the headroom is added only when thinking
-            # is actually left on (see LLM_THINKING_TOKEN_HEADROOM).
+            # is actually left on (see LLM_THINKING_TOKEN_HEADROOM). Getting
+            # this wrong does not raise: the reasoning eats the whole budget
+            # and the reply comes back empty.
             "max_tokens": max_tokens
-            + (config.LLM_THINKING_TOKEN_HEADROOM if thinks and not simple_task else 0),
+            + (config.LLM_THINKING_TOKEN_HEADROOM if thinking_on else 0),
         }
         if json_mode and model not in self._no_json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        if simple_task and thinks:
+        if simple_task and thinks and can_disable_thinking:
             kwargs["reasoning_effort"] = config.LLM_REASONING_FOR_SIMPLE_TASKS
 
         self._wait_for_turn()
@@ -443,6 +562,16 @@ class LLMClient:
             )
             if "response_format" in kwargs:
                 self._no_json_mode.add(model)
+            if "reasoning_effort" in kwargs:
+                self._no_reasoning_effort.add(model)
+                # Dropping the parameter turns thinking back ON, so the
+                # budget has to grow with it. Without this the retry
+                # succeeds and returns an empty reply, which is the harder
+                # failure to read: the call looks fine and says nothing.
+                if not thinking_on:
+                    kwargs["max_tokens"] = (
+                        max_tokens + config.LLM_THINKING_TOKEN_HEADROOM
+                    )
             for key in optional:
                 kwargs.pop(key)
             self._wait_for_turn()
@@ -487,11 +616,18 @@ class LLMClient:
         if self.throttle_seconds <= 0:
             return
         with LLMClient._throttle_lock:
-            elapsed = time.monotonic() - LLMClient._last_call_at
-            remaining = self.throttle_seconds - elapsed
+            deadline = LLMClient._last_call_at + self.throttle_seconds
+            remaining = deadline - time.monotonic()
             if remaining > 0:
                 logger.debug("Throttling %.1fs to respect per-minute limits", remaining)
-                time.sleep(remaining)
+                # Slept in a loop, not once: time.sleep() can return early as
+                # measured by time.monotonic(), because on Windows the two read
+                # different clocks and disagree by up to ~15ms. One short sleep
+                # would put two calls closer together than the per-minute limit
+                # allows, which is the one thing this function exists to stop.
+                while remaining > 0:
+                    time.sleep(remaining)
+                    remaining = deadline - time.monotonic()
             LLMClient._last_call_at = time.monotonic()
 
     def _backoff_seconds(self, retry: int) -> float:
