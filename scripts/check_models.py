@@ -30,10 +30,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import litellm  # noqa: E402
-from litellm import exceptions as llm_exceptions  # noqa: E402
+import litellm
+from litellm import exceptions as llm_exceptions
 
-from src import config  # noqa: E402
+from src import config
 
 logger = logging.getLogger("check_models")
 

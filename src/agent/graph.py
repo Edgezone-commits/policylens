@@ -315,7 +315,7 @@ class PolicyLensAgent:
 
         try:
             final: AgentState = self.graph.invoke(initial)
-        except Exception as error:  # noqa: BLE001 -- see docstring
+        except Exception as error:
             # The graph should handle its own failures; anything reaching here
             # is a bug or an environment problem. Report it as a failed run
             # rather than letting it escape into the API layer as a 500.

@@ -55,17 +55,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from evaluation import dataset  # noqa: E402
-from evaluation.metrics import (  # noqa: E402
+from evaluation import dataset
+from evaluation.metrics import (
     Graded,
     aggregate,
     aggregate_recall,
     grade,
     recall_at_k,
 )
-from src import config  # noqa: E402
-from src.agent.graph import PolicyLensAgent  # noqa: E402
-from src.retrieval.store import VectorStore  # noqa: E402
+from src import config
+from src.agent.graph import PolicyLensAgent
+from src.retrieval.store import VectorStore
 
 logger = logging.getLogger("evaluate")
 

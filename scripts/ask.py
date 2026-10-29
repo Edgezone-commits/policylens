@@ -22,8 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
-from src.agent.graph import AgentAnswer, PolicyLensAgent  # noqa: E402
+from src import config
+from src.agent.graph import AgentAnswer, PolicyLensAgent
 
 logger = logging.getLogger("ask")
 

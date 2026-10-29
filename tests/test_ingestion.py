@@ -260,7 +260,7 @@ class RecordingStore:
 
 
 def test_the_supported_extensions_are_the_ones_the_loader_handles():
-    assert SUPPORTED_EXTENSIONS == {".pdf", ".txt"}
+    assert {".pdf", ".txt"} == SUPPORTED_EXTENSIONS
 
 
 def test_ingesting_the_fixture_reports_pages_and_chunks():

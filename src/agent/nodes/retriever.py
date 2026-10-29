@@ -21,7 +21,7 @@ Two behaviours are worth reading the code for:
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from src import config
 from src.agent.state import AgentState, RetrievedChunk, trace_entry

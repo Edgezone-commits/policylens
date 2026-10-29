@@ -32,8 +32,9 @@ from __future__ import annotations
 
 import re
 import statistics
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 from evaluation.dataset import Question
 
@@ -171,7 +172,7 @@ def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) 
     verdicts = facts_present(text, item.expected_facts)
     missing = [
         list(group)
-        for group, ok in zip(item.expected_facts, verdicts)
+        for group, ok in zip(item.expected_facts, verdicts, strict=True)
         if not ok
     ]
     cited_expected = (

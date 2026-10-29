@@ -34,7 +34,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
+from src import config
 
 # How each status is presented. The wording matters more than it looks: these
 # strings are the whole explanation most users will ever read about why they

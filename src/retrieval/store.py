@@ -156,7 +156,9 @@ class VectorStore:
         distances = (response.get("distances") or [[]])[0]
 
         results: list[dict[str, Any]] = []
-        for text, metadata, distance in zip(documents, metadatas, distances):
+        for text, metadata, distance in zip(
+            documents, metadatas, distances, strict=True
+        ):
             metadata = metadata or {}
             results.append(
                 {

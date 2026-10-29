@@ -46,8 +46,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
-from src.retrieval.store import VectorStore  # noqa: E402
+from src import config
+from src.retrieval.store import VectorStore
 
 logger = logging.getLogger("calibrate_threshold")
 
@@ -269,8 +269,8 @@ def main() -> int:
             "indexed_documents": store.list_documents(),
             "total_chunks": store.count(),
             "probes": {
-                "answerable": dict(zip(SHOULD_RETRIEVE, retrieve_scores)),
-                "unanswerable": dict(zip(SHOULD_ABSTAIN, abstain_scores)),
+                "answerable": dict(zip(SHOULD_RETRIEVE, retrieve_scores, strict=True)),
+                "unanswerable": dict(zip(SHOULD_ABSTAIN, abstain_scores, strict=True)),
             },
             "separation": {
                 "highest_unanswerable": gap_low,

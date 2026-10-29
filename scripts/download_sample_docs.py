@@ -23,7 +23,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
+from src import config
 
 logger = logging.getLogger("download_sample_docs")
 

@@ -1,46 +1,60 @@
+# Runtime dependencies, pinned to the versions this project's recorded
+# evaluation results were produced with (Python 3.12.10).
+#
+# WHY exact pins rather than the `>=` floors this file used to carry: the
+# numbers in README.md come from one dated run, and a reader who installs a
+# newer litellm or sentence-transformers and gets different numbers cannot
+# tell a real regression from a dependency drifting under them. Floors make
+# the install reproducible-ish; pins make it reproducible. Transitive
+# dependencies are still resolved freely -- this is a pinned direct set, not
+# a full lockfile, which is the honest description of it.
+#
+# Development tools (black, ruff, pre-commit) live in requirements-dev.txt so
+# a container or a CI test job does not install them.
+
 # --- LLM access -------------------------------------------------------------
 # LiteLLM gives one uniform call signature for ~100 providers. We use it so the
 # model can be swapped by editing a single string in src/config.py, which keeps
 # the free-tier Gemini default from becoming a hard dependency.
-litellm>=1.63.0
+litellm==1.104.0
 
 # --- Agent orchestration ----------------------------------------------------
 # LangGraph (not a LangChain sequential chain) because the verification retry
 # loop is a cycle with conditional edges, which a linear chain cannot express.
-langgraph>=0.3.0
+langgraph==1.2.12
 
 # --- LangChain toolkit ------------------------------------------------------
 # Used for the pieces that are genuinely solved problems: PDF loading and
 # recursive text splitting. Orchestration stays in LangGraph.
-langchain-core>=0.3.0
-langchain-community>=0.3.0
-langchain-text-splitters>=0.3.0
-pypdf>=5.0.0
+langchain-core==1.6.6
+langchain-community==0.4.2
+langchain-text-splitters==1.1.3
+pypdf==6.19.0
 
 # --- Embeddings (local, free, no API key, no rate limit) --------------------
-sentence-transformers>=3.0.0
+sentence-transformers==6.1.0
 
 # --- Vector store -----------------------------------------------------------
-chromadb>=0.6.0
+chromadb==1.5.9
 
 # --- Verifier ---------------------------------------------------------------
 # RapidFuzz does the programmatic citation check (is the quoted text actually
 # present in the chunk?) before we spend an LLM call on it.
-rapidfuzz>=3.9.0
+rapidfuzz==3.14.6
 
 # --- API --------------------------------------------------------------------
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-python-multipart>=0.0.9   # required by FastAPI for PDF file uploads
-pydantic>=2.9.0
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32   # required by FastAPI for PDF file uploads
+pydantic==2.13.5
 
 # --- Frontend ---------------------------------------------------------------
-streamlit>=1.39.0
+streamlit==1.65.0
 
 # --- Utilities --------------------------------------------------------------
-python-dotenv>=1.0.0
-requests>=2.32.0
+python-dotenv==1.2.4
+requests==2.34.2
 
 # --- Tests ------------------------------------------------------------------
-pytest>=8.3.0
-httpx>=0.27.0             # FastAPI TestClient transport
+pytest==9.1.1
+httpx==0.28.1             # FastAPI TestClient transport

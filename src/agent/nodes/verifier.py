@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Callable
+from collections.abc import Callable
 
 from rapidfuzz import fuzz
 
@@ -284,7 +284,7 @@ def build_verifier_node(
                     method="judge_unavailable",
                     match_score=round(score, 1),
                     note="; ".join(
-                        divergences + [f"could not be checked: {type(error).__name__}"]
+                        [*divergences, f"could not be checked: {type(error).__name__}"]
                     ),
                 )
                 checked.append(result)  # type: ignore[arg-type]

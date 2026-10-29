@@ -18,9 +18,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
-from src.ingestion.indexer import ingest_directory, ingest_file  # noqa: E402
-from src.retrieval.store import VectorStore  # noqa: E402
+from src import config
+from src.ingestion.indexer import ingest_directory, ingest_file
+from src.retrieval.store import VectorStore
 
 logger = logging.getLogger("ingest_docs")
 

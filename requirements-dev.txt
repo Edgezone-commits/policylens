@@ -1,0 +1,11 @@
+# Development tools only. Kept out of requirements.txt so the Docker image and
+# the CI test job do not install a linter they never run.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pre-commit install
+
+-r requirements.txt
+
+black==26.10.1
+ruff==0.17.3
+pre-commit==4.4.0
