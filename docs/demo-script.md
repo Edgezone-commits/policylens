@@ -106,7 +106,7 @@ asked, that is the answer, and it is a configuration value rather than a
 property of the system.
 
 **If the quota dies mid-recording**, stop and say so rather than cutting
-around it. `pytest -q` runs all 193 tests with no key, and
+around it. `pytest -q` runs all 196 tests with no key, and
 `make eval` reproduces the retrieval and latency tables for free — a
 recording that shows the fallback honestly is worth more than a second take
 that hides it.

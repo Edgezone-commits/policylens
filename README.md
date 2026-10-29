@@ -49,8 +49,8 @@ plausible paragraphs of labour law and a confident figure.
   refused.
 - **Exposes its own reasoning path** as a field in the API response, one entry
   per node, rather than as something to reconstruct from logs.
-- **Runs the whole test suite with no API key and no network** — 193 tests in
-  about 25 seconds, against a scripted LLM and a fake embedder.
+- **Runs the whole test suite with no API key and no network** — 196 tests in
+  about 26 seconds, against a scripted LLM and a fake embedder.
 
 ---
 
@@ -242,7 +242,7 @@ git clone https://github.com/Edgezone-commits/policylens.git
 cd policylens
 
 make install            # creates .venv and installs the pinned dependencies
-make test               # 193 tests, no API key needed, ~25s
+make test               # 196 tests, no API key needed, ~26s
 ```
 
 To ask a question you need a free Gemini key from
@@ -353,7 +353,7 @@ frontend/        Streamlit UI, which reaches the agent over HTTP only
 evaluation/      the 53-question labelled dataset, the grader, the metrics
   results/       retrieval.md and perf.md, regenerated for free and committed
 scripts/         ingest, ask, calibrate, check models, evaluate, eval_retrieval, eval_perf
-tests/           193 tests, none needing an API key
+tests/           196 tests, none needing an API key
 deploy/
   huggingface/   Space Dockerfile and entrypoint, built on every push by CI
 docs/            architecture, decisions, evaluation, deploy, demo script
@@ -510,7 +510,7 @@ retrieval.
   is one SQL statement each
 
 **Evaluation and infrastructure**
-- pytest — 193 tests, no API key, about 25 seconds
+- pytest — 196 tests, no API key, about 26 seconds
 - ruff and black, with pre-commit, enforced by a CI job
 - Docker and docker-compose; a second image for the Hugging Face Space, built
   on every push so it cannot drift

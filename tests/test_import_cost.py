@@ -8,8 +8,8 @@ than by whoever made the change.
   1. Importing src.retrieval.embeddings must not import sentence_transformers,
      because that pulls in torch and transformers and costs ~57s on the
      development machine. The suite injects a fake embedder and needs none of
-     it; before the import was made lazy, 190 tests waited a minute at
-     collection for a model no test uses.
+     it; before the import was made lazy, the whole suite waited a minute
+     at collection for a model no test uses.
 
   2. src.agent.llm must set LITELLM_LOCAL_MODEL_COST_MAP before importing
      litellm, which otherwise fetches its pricing map over the NETWORK while

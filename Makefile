@@ -56,7 +56,7 @@ help:
 	@echo "  make api            API only"
 	@echo "  make ui             Streamlit UI only"
 	@echo ""
-	@echo "  make test           193 tests, no API key required (~25s)"
+	@echo "  make test           196 tests, no API key required (~26s)"
 	@echo "  make lint           ruff and black, in check mode"
 	@echo "  make format         ruff --fix and black, writing changes"
 	@echo ""
