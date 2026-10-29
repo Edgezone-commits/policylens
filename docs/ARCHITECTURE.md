@@ -38,8 +38,6 @@ flowchart TD
 
     RETRY --> RETRIEVER
     RESPONDER --> DONE
-
-    classDef abstain stroke-dasharray: 4 3
 ```
 
 Solid edges carry evidence forward. **Dashed edges are the abstention paths**,
