@@ -21,6 +21,7 @@ from evaluation.dataset import (
     SINGLE_DOCUMENT,
     Question,
 )
+from evaluation.dataset import documents as dataset_documents
 from evaluation.metrics import (
     aggregate,
     aggregate_ranked,
@@ -607,3 +608,35 @@ def test_performance_summary_counts_an_abstention_as_a_real_question():
     summary = performance_summary(rows)
     assert summary["questions"] == 2
     assert summary["latency_seconds"]["p50"] == 4.0
+
+
+# ---------------------------------------------------------------------------
+# The corpus the dataset defines
+# ---------------------------------------------------------------------------
+# scripts/eval_retrieval.py builds its reference index from dataset.documents(),
+# so these pin the thing that decides WHICH corpus the committed retrieval
+# table was measured against. A silent change here would change the numbers
+# without changing the table's description of them.
+
+
+def test_documents_lists_exactly_the_three_indexed_sources():
+    assert dataset_documents() == sorted([ACT, APACHE, RULES])
+
+
+def test_documents_is_derived_from_the_questions_not_hardcoded():
+    """Every name it returns must be demanded by at least one question, and
+    every answerable question's documents must appear in it."""
+    listed = set(dataset_documents())
+    demanded = {name for item in ANSWERABLE for name in item.expected_documents}
+    assert listed == demanded
+
+
+def test_documents_excludes_unanswerable_questions():
+    """They carry no expected_documents, so they cannot contribute -- and a
+    corpus grown by an unanswerable question would be a corpus containing a
+    document nothing is labelled against."""
+    from evaluation.dataset import UNANSWERABLE
+
+    for item in UNANSWERABLE:
+        for name in item.expected_documents:
+            assert name not in dataset_documents(), item.question

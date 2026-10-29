@@ -781,3 +781,22 @@ def summary() -> str:
         f"{len(CROSS_DOCUMENT)} cross-document, {len(OUT_OF_DOMAIN)} out-of-domain, "
         f"{len(ADVERSARIAL)} adversarial"
     )
+
+
+def documents() -> list[str]:
+    """Every document the answerable questions are labelled against.
+
+    Derived from the questions rather than written out as a list, so adding a
+    question about a fourth document cannot leave the corpus definition
+    behind. scripts/eval_retrieval.py builds its reference index from exactly
+    this set: retrieval metrics only mean something measured against the
+    corpus the labels describe, and "which corpus is that" is a fact about
+    the dataset, so it belongs here rather than in the script.
+
+    Unanswerable questions contribute nothing by construction -- they carry no
+    expected_documents, because there is no passage that should be found.
+    """
+    names: set[str] = set()
+    for item in ANSWERABLE:
+        names.update(item.expected_documents)
+    return sorted(names)

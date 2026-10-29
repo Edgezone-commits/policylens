@@ -83,14 +83,6 @@ RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
 REFERENCE_INDEX_DIR = PROJECT_ROOT / "data" / "reference_index"
 
 
-def dataset_documents() -> list[str]:
-    """Every document name the answerable questions are labelled against."""
-    names: set[str] = set()
-    for item in dataset.ANSWERABLE:
-        names.update(item.expected_documents)
-    return sorted(names)
-
-
 def reference_store() -> VectorStore | None:
     """Open the reference index, building it from data/raw/ if need be.
 
@@ -98,7 +90,7 @@ def reference_store() -> VectorStore | None:
     not in data/raw/: the fix is to run scripts/download_sample_docs.py, and
     the caller can say so more usefully than a traceback can.
     """
-    wanted = dataset_documents()
+    wanted = dataset.documents()
     store = VectorStore(persist_dir=REFERENCE_INDEX_DIR)
 
     present = {entry["source_document"] for entry in store.list_documents()}
