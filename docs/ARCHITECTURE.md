@@ -9,36 +9,58 @@ defending against. The reasoning behind the technology choices is in
 
 ## The shape of it
 
-```
-                          ┌───────────────────────────────────────────┐
-                          │                                           │
-  question ──▶ ROUTER ────┴── OUT_OF_SCOPE ──────────────────────┐    │
-                 │                                               │    │
-                 │ DOCUMENT_QA                                   │    │
-                 ▼                                               ▼    │
-             RETRIEVER ──── nothing above threshold ─────────▶ RESPONDER ──▶ answer
-                 │                                               ▲ ▲ ▲
-                 │ chunks                                        │ │ │
-                 ▼                                               │ │ │
-             ANALYZER ───── passages don't answer it ────────────-┘ │ │
-                 │                                                  │ │
-                 │ draft + verbatim quotes                          │ │
-                 ▼                                                  │ │
-             VERIFIER ───── nothing verified ─────────────────────-──┘ │
-                 │                                                     │
-                 │ all or some quotes confirmed                        │
-                 └─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    START([question]) --> ROUTER
 
-                 ┌──────── RETRY (max 2) ────────┐
-                 │  from retriever, analyzer or  │
-                 │  verifier, back to retriever  │
-                 └───────────────────────────────┘
+    ROUTER{{"<b>router</b><br/>1 LLM call<br/>classify · scope · rewrite"}}
+    RETRIEVER{{"<b>retriever</b><br/>no LLM<br/>embed · threshold gate"}}
+    ANALYZER{{"<b>analyzer</b><br/>1 LLM call<br/>draft + verbatim quotes"}}
+    VERIFIER{{"<b>verifier</b><br/>0-N LLM calls<br/>re-read chunk by id · fuzzy · judge"}}
+    RETRY["<b>retry</b><br/>no LLM<br/>spend one attempt, widen to k=10"]
+    RESPONDER{{"<b>responder</b><br/>no LLM<br/>assign status · compute confidence"}}
+    DONE([answer or abstention])
+
+    ROUTER -->|DOCUMENT_QA / COMPARISON| RETRIEVER
+    ROUTER -.->|OUT_OF_SCOPE| RESPONDER
+
+    RETRIEVER -->|chunks above 0.32| ANALYZER
+    RETRIEVER -.->|"nothing above threshold,<br/>and the rewrite was the question"| RESPONDER
+    RETRIEVER -->|"nothing above threshold,<br/>but the rewrite differed"| RETRY
+
+    ANALYZER -->|draft with citations| VERIFIER
+    ANALYZER -->|"passages do not answer it,<br/>retries left"| RETRY
+    ANALYZER -.->|"passages do not answer it,<br/>no retries left"| RESPONDER
+
+    VERIFIER -->|"at least one quote confirmed"| RESPONDER
+    VERIFIER -->|"nothing confirmed,<br/>retries left"| RETRY
+    VERIFIER -.->|"nothing confirmed,<br/>no retries left"| RESPONDER
+
+    RETRY --> RETRIEVER
+    RESPONDER --> DONE
+
+    classDef abstain stroke-dasharray: 4 3
 ```
 
-Three exits to `RESPONDER` carry **no** answer — out of scope, nothing
-retrieved, nothing verified. One carries an answer. That asymmetry is the
-design: it is easy to reach "I will not answer this" and hard to reach "here
-is the answer".
+Solid edges carry evidence forward. **Dashed edges are the abstention paths**,
+and there are four of them: out of scope, nothing retrieved, nothing relevant,
+nothing verified. One edge in the whole graph reaches `responder` carrying an
+answer. That asymmetry is the design: it is easy to arrive at "I will not
+answer this" and hard to arrive at "here is the answer".
+
+The hexagons are the nodes that make a decision; `retry` is a plain box
+because it decides nothing — it exists only to increment the counter, which a
+LangGraph conditional edge cannot do (edges choose a route, they cannot write
+state). The counter must increment exactly once per loop or the loop never
+terminates.
+
+Built by `build_graph()` in `src/agent/graph.py`, which also takes
+`verify=False` for the evaluation's control arm. That build omits the
+`verifier` node entirely and routes `analyzer` straight to `responder`, which
+is why the analyzer's outgoing edge is produced by a factory
+(`make_after_analyzer`) rather than written once — LangGraph reads the return
+annotation to infer reachable nodes, and `"verifier"` is not reachable in a
+graph that has no verifier.
 
 State is a `TypedDict` (`src/agent/state.py`) that every node reads and
 partially updates. LangGraph merges each node's returned dict into it, which
@@ -216,6 +238,74 @@ second pass that abstains would leave the first pass's unverified citations
 sitting in state when the responder read it.
 
 ---
+
+## The request lifecycle
+
+The graph above is the middle of a longer path. One question from the UI to a
+rendered citation:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as Streamlit<br/>frontend/app.py
+    participant API as FastAPI<br/>src/api/app.py
+    participant Agent as PolicyLensAgent<br/>src/agent/graph.py
+    participant Store as ChromaDB<br/>src/retrieval/store.py
+    participant LLM as LiteLLM<br/>src/agent/llm.py
+    participant Log as SQLite<br/>src/db/queries.py
+
+    User->>UI: types a question
+    UI->>API: POST /ask {question, document?}
+    Note over UI,API: HTTP only. The UI never imports the agent,<br/>so the ~90MB embedder stays out of its process.
+
+    API->>Agent: ask(question, source_document)
+
+    Agent->>Store: list_documents()
+    Agent->>LLM: router — classify, scope, rewrite
+    LLM-->>Agent: {intent, document, search_query}
+
+    Agent->>Store: retrieve(search_query, k=5)
+    Store-->>Agent: chunks above 0.32, or []
+
+    Agent->>LLM: analyzer — answer with verbatim quotes
+    LLM-->>Agent: {answer, citations[{chunk_id, quote}]}
+
+    loop every citation
+        Agent->>Store: get_chunk(chunk_id)
+        Note right of Agent: Re-read from the store, never from state.<br/>An invented chunk_id fails as unknown_chunk.
+        Store-->>Agent: the passage as indexed
+        Agent->>Agent: RapidFuzz + divergence check
+        opt string matching cannot settle it
+            Agent->>LLM: judge — does this passage support the quote?
+        end
+    end
+
+    Agent->>Agent: responder — status + confidence
+    Agent-->>API: AgentAnswer
+    API->>Log: record(question, status, confidence, latency)
+    Log-->>API: query_id
+    API-->>UI: 200 AnswerResponse<br/>(200 even for an abstention)
+    UI->>User: answer, citations with verdicts, reasoning path
+```
+
+Three things in that sequence are load-bearing:
+
+**The UI speaks HTTP and nothing else.** It could be replaced by curl without
+the agent noticing, which is what makes the response schema
+(`src/api/schemas.py`) a real contract rather than a convenience — anything
+the UI can display, another client can obtain.
+
+**The verification loop re-reads from the store.** The arrow goes back to
+ChromaDB, not to the agent's own state. Checking a quote against the copy the
+analyzer handled would verify the analyzer against itself.
+
+**The log write happens after the answer, and its failure cannot lose the
+answer.** `query_id` comes back as a field in the response; if SQLite is
+unavailable the answer is still returned, with `query_id` null.
+
+---
+
 
 ## Around the graph
 
