@@ -22,6 +22,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Its own job, not a step in `test`: it needs ruff and black and nothing
+  # else, so it finishes in seconds while the test job is still installing
+  # torch, and a formatting slip is reported without waiting for the suite.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the linters only
+        # Pinned to the same versions as requirements-dev.txt and
+        # .pre-commit-config.yaml. A newer black in CI than in the commit
+        # hook fails the build on code the hook just approved.
+        run: pip install ruff==0.17.3 black==26.10.1
+
+      - name: ruff
+        run: ruff check src/ tests/ scripts/ evaluation/ frontend/
+
+      - name: black
+        run: black --check src/ tests/ scripts/ evaluation/ frontend/
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
