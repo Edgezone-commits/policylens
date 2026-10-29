@@ -1,7 +1,8 @@
 {
-  "ran_at": "2026-10-29T21:40:31",
+  "ran_at": "2026-10-29T22:22:02",
   "dataset": "53 questions: 28 single-document, 10 cross-document, 10 out-of-domain, 5 adversarial",
   "group": "answerable",
+  "index": "reference",
   "embedding_model": "all-MiniLM-L6-v2",
   "chunks_indexed": 279,
   "documents": [

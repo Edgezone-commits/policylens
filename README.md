@@ -386,11 +386,16 @@ python scripts/evaluate.py --no-verify     # the control arm
 python scripts/evaluate.py --recall-only   # Recall@5 only, free
 ```
 
-A local index drifts as documents are uploaded through `POST /documents`, and
-retrieval numbers are only comparable across runs if the corpus is the same.
-`--index` points `eval_retrieval.py` at a specific Chroma directory for that
-reason; the committed table was measured against an index rebuilt from the
-three documents the 2026-10-06 run used.
+**On reproducibility.** The working index drifts — `POST /documents` adds to
+it — and retrieval numbers only mean something if the corpus is the one the
+questions were labelled against. So `eval_retrieval.py` does not measure the
+working index. It builds a **reference index** from exactly the documents the
+dataset references, caches it under `data/reference_index/`, and measures
+that. `make eval` therefore reproduces the committed table on any machine
+that has the corpus, rather than reporting whatever happens to be indexed
+locally. Use `--live-index` to ask the other question — how retrieval behaves
+on *your* documents — bearing in mind the labels no longer describe that
+corpus. Each results file records which index produced it.
 
 Methodology, the full failure analysis and the adjudication of every wrong
 answer are in [docs/EVALUATION.md](docs/EVALUATION.md).

@@ -49,11 +49,75 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluation import dataset
 from evaluation.metrics import DEFAULT_KS, aggregate_ranked
 from src import config
+from src.ingestion.indexer import ingest_file
 from src.retrieval.store import VectorStore
 
 logger = logging.getLogger("eval_retrieval")
 
-RESULTS_DIR = Path(__file__).resolve().parents[1] / "evaluation" / "results"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
+
+# A SEPARATE index holding exactly the documents the dataset is labelled
+# against, kept apart from the working index at config.CHROMA_DIR.
+#
+# WHY this exists, and why it is the default. The working index is live: the
+# API's POST /documents adds to it, so it drifts. On the development machine
+# it now holds 374 chunks across 4 documents, because a handbook was uploaded
+# after the recorded evaluation ran. Retrieval metrics computed against it
+# would silently measure a different corpus than the one the questions were
+# labelled against, and the README's table would stop being reproducible by
+# the command the README tells people to run -- which is the failure mode
+# worth engineering against, because nothing about it looks wrong.
+#
+# Rebuilt only when the documents it holds do not match what the dataset
+# needs, so the embedding cost is paid once rather than on every run.
+REFERENCE_INDEX_DIR = PROJECT_ROOT / "data" / "reference_index"
+
+
+def dataset_documents() -> list[str]:
+    """Every document name the answerable questions are labelled against."""
+    names: set[str] = set()
+    for item in dataset.ANSWERABLE:
+        names.update(item.expected_documents)
+    return sorted(names)
+
+
+def reference_store() -> VectorStore | None:
+    """Open the reference index, building it from data/raw/ if need be.
+
+    Returns None, rather than raising, when a document the dataset needs is
+    not in data/raw/: the fix is to run scripts/download_sample_docs.py, and
+    the caller can say so more usefully than a traceback can.
+    """
+    wanted = dataset_documents()
+    store = VectorStore(persist_dir=REFERENCE_INDEX_DIR)
+
+    present = {entry["source_document"] for entry in store.list_documents()}
+    if present == set(wanted) and store.count() > 0:
+        logger.info(
+            "Reference index ready: %d chunks, %d documents.",
+            store.count(),
+            len(present),
+        )
+        return store
+
+    missing = [name for name in wanted if not (config.RAW_DOCS_DIR / name).is_file()]
+    if missing:
+        logger.error("Not in %s: %s", config.RAW_DOCS_DIR, ", ".join(missing))
+        return None
+
+    # Rebuilt from scratch rather than topped up, so a stale document from an
+    # earlier dataset cannot linger in the index and affect the ranking.
+    if present:
+        logger.info("Reference index holds %s; rebuilding.", sorted(present))
+        store.reset()
+
+    for name in wanted:
+        result = ingest_file(config.RAW_DOCS_DIR / name, store)
+        logger.info("Indexed %s: %d chunks", result.source_document, result.chunks)
+
+    logger.info("Reference index built: %d chunks.", store.count())
+    return store
 
 
 def measure(
@@ -241,13 +305,19 @@ def main() -> int:
         "--index",
         default=None,
         help=(
-            "Measure a different Chroma directory than config.CHROMA_DIR. "
-            "WHY this exists: retrieval metrics are only comparable across "
-            "runs if the corpus is the same, and a local index drifts as "
-            "documents are uploaded through the API. Pointing this at an "
-            "index built from a known document set makes a number "
-            "reproducible instead of a property of whatever happens to be "
-            "indexed today."
+            "Measure a specific Chroma directory instead of the reference "
+            "index. For comparing one corpus against another deliberately."
+        ),
+    )
+    parser.add_argument(
+        "--live-index",
+        action="store_true",
+        help=(
+            "Measure the working index at config.CHROMA_DIR -- whatever is "
+            "indexed right now, including anything uploaded through the API. "
+            "Useful for asking how retrieval behaves on your actual corpus; "
+            "NOT comparable with the committed table, because the dataset's "
+            "labels describe a different set of documents."
         ),
     )
     parser.add_argument(
@@ -270,7 +340,24 @@ def main() -> int:
     }
     questions = groups[args.only]
 
-    store = VectorStore(persist_dir=args.index) if args.index else VectorStore()
+    # Default: the reference index, built from exactly the documents the
+    # dataset is labelled against, so `make eval` reproduces the committed
+    # table on any machine that has the corpus -- rather than measuring
+    # whatever happens to be indexed locally.
+    if args.index:
+        store = VectorStore(persist_dir=args.index)
+    elif args.live_index:
+        store = VectorStore()
+    else:
+        store = reference_store()
+        if store is None:
+            print(
+                "The reference corpus is not in data/raw/. Run\n"
+                "  python scripts/download_sample_docs.py\n"
+                "or measure the index you do have with --live-index."
+            )
+            return 1
+
     if store.count() == 0:
         print("The index is empty. Run scripts/ingest_docs.py first.")
         return 1
@@ -303,6 +390,11 @@ def main() -> int:
                 "ran_at": datetime.now().isoformat(timespec="seconds"),
                 "dataset": dataset.summary(),
                 "group": args.only,
+                "index": (
+                    "reference"
+                    if not args.index and not args.live_index
+                    else ("live" if args.live_index else str(args.index))
+                ),
                 "embedding_model": config.EMBEDDING_MODEL,
                 "chunks_indexed": store.count(),
                 "documents": store.list_documents(),
