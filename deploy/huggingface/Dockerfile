@@ -30,6 +30,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN useradd --create-home --uid 1000 user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
+
+# The app directory is created AND CHOWNED here, before WORKDIR names it.
+# WORKDIR creates a missing directory as root, so leaving it to do that gives
+# a root-owned directory that the `user` below cannot write to -- and the
+# failure surfaces later and somewhere else, as `mkdir: cannot create
+# directory 'data': Permission denied` on a line that looks unrelated. The CI
+# job for this file caught exactly that.
+RUN mkdir -p /home/user/app && chown -R user:user /home/user
 WORKDIR /home/user/app
 
 RUN apt-get update \

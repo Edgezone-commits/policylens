@@ -257,9 +257,20 @@ make ingest                     # PDFs -> chunks -> ChromaDB
 make run                        # API on :8000, UI on :8501
 ```
 
-`make` is not installed on Windows by default. Every target is a one-line
-command — open the [Makefile](Makefile) and run the line directly, or install
-make with `winget install ezwinports.make` and use Git Bash.
+**Two Windows notes**, both found by running the quickstart from a fresh
+clone on a Windows 11 machine:
+
+- `make` is not installed by default. Every target is a one-line command —
+  open the [Makefile](Makefile) and run the line directly, or install make
+  with `winget install ezwinports.make` and use Git Bash.
+- **If `pip install` fails with `OSError: [Errno 2] No such file or
+  directory` on a long `torch/include/ATen/...` path**, that is Windows'
+  260-character path limit, not a broken requirement. `torch` ships headers
+  with very deep paths. Either enable long paths (`Set-ItemProperty
+  'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' LongPathsEnabled 1`
+  as administrator, then reboot) or clone somewhere short such as
+  `C:\policylens`. The install succeeds from a short path with long paths
+  still disabled.
 
 Ask one question without starting a server:
 
