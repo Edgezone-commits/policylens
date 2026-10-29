@@ -2,7 +2,16 @@
 
     python scripts/eval_retrieval.py
     python scripts/eval_retrieval.py --ks 1 3 5 10 20
+    python scripts/eval_retrieval.py --live-index
     python scripts/eval_retrieval.py --no-save
+
+WHICH INDEX IT MEASURES, which is the first thing to know: by default, NOT the
+working one. It builds a reference index holding exactly the documents the
+dataset is labelled against (see reference_store below) and measures that. The
+working index at config.CHROMA_DIR is live -- POST /documents writes to it --
+so measuring it would report numbers for a corpus the questions were not
+labelled against, and the committed table would stop being reproducible by
+this command. --live-index asks that other question on purpose.
 
 WHY this is a separate script from evaluate.py rather than another flag on it:
 it calls no LLM. Nothing here touches the daily quota, so it runs on the whole
