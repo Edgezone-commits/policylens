@@ -189,13 +189,17 @@ def main() -> int:
             names = list_gemini_models(key)
             for name in names:
                 print(f"  {name}")
-            print(f"\n{len(names)} model(s). Use one as "
-                  f"POLICYLENS_MODEL=gemini/<name> in .env")
+            print(
+                f"\n{len(names)} model(s). Use one as "
+                f"POLICYLENS_MODEL=gemini/<name> in .env"
+            )
 
     if not usable:
-        print("Nothing in the chain can be called. Either fix the key in .env, "
-              "or set POLICYLENS_MODEL / POLICYLENS_FALLBACK_MODELS to models "
-              "this key can reach (python scripts/check_models.py --list).")
+        print(
+            "Nothing in the chain can be called. Either fix the key in .env, "
+            "or set POLICYLENS_MODEL / POLICYLENS_FALLBACK_MODELS to models "
+            "this key can reach (python scripts/check_models.py --list)."
+        )
 
     # Non-zero only when NO model is usable. An exhausted primary with a
     # working fallback is the chain doing its job, not a failed check.

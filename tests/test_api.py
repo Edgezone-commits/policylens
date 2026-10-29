@@ -79,7 +79,9 @@ class FakeStore:
 class FakeAgent:
     """Returns a prepared answer and records what it was asked."""
 
-    def __init__(self, answer: AgentAnswer | None = None, store: FakeStore | None = None):
+    def __init__(
+        self, answer: AgentAnswer | None = None, store: FakeStore | None = None
+    ):
         self.store = store or FakeStore()
         self.answer = answer or AgentAnswer(
             question="",
@@ -288,7 +290,9 @@ def test_an_unsupported_file_type_is_a_415(log):
     with build_client(FakeAgent(), log) as client:
         response = client.post(
             "/documents",
-            files={"file": ("notes.docx", io.BytesIO(b"PK\x03\x04"), "application/zip")},
+            files={
+                "file": ("notes.docx", io.BytesIO(b"PK\x03\x04"), "application/zip")
+            },
         )
 
     assert response.status_code == 415
@@ -443,7 +447,9 @@ def test_the_log_round_trips_citations_and_the_trace(log):
         answer="Six months.",
         citations=[citation()],
         confidence=0.88,
-        trace=[{"node": "router", "summary": "Classified as DOCUMENT_QA", "detail": {}}],
+        trace=[
+            {"node": "router", "summary": "Classified as DOCUMENT_QA", "detail": {}}
+        ],
     )
     row_id = log.record(answer, latency_seconds=3.5)
 

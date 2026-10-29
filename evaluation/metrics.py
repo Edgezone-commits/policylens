@@ -122,7 +122,9 @@ class Graded:
         return self.outcome == "CORRECT"
 
 
-def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) -> Graded:
+def grade(
+    item: Question, answer: dict[str, Any], latency_seconds: float = 0.0
+) -> Graded:
     """Score one answer against its label.
 
     `answer` is AgentAnswer.as_dict(), so this grades exactly what the API
@@ -214,9 +216,7 @@ def aggregate(results: list[Graded]) -> dict[str, Any]:
 
     citations_total = sum(r.total_citations for r in scored)
     citations_verified = sum(r.verified_citations for r in scored)
-    recall_checked = [
-        r for r in asserted if r.cited_expected_documents is not None
-    ]
+    recall_checked = [r for r in asserted if r.cited_expected_documents is not None]
     cross = [r for r in answerable if r.cross_document]
     cross_asserted = [r for r in cross if r.status in ANSWERED_STATUSES]
 

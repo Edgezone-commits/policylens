@@ -65,7 +65,9 @@ def ingest_file(file_path: str | Path, store: VectorStore) -> IngestionResult:
 
     chunks = chunk_documents(pages)
     if not chunks:
-        return IngestionResult(file_path.name, len(pages), 0, "chunking produced nothing")
+        return IngestionResult(
+            file_path.name, len(pages), 0, "chunking produced nothing"
+        )
 
     stored = store.add_chunks(chunks)
     logger.info(

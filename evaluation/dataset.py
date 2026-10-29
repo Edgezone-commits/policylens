@@ -122,7 +122,9 @@ SINGLE_DOCUMENT: list[Question] = [
     Question(
         question="What notice period applies to terminating a labour for misconduct?",
         answerable=True,
-        expected_facts=[["not apply", "no notice", "without notice", "except", "exempt"]],
+        expected_facts=[
+            ["not apply", "no notice", "without notice", "except", "exempt"]
+        ],
         expected_documents=[ACT],
         source=(
             'Section 144(1) requires notice "in any circumstance except when '
@@ -234,7 +236,7 @@ SINGLE_DOCUMENT: list[Question] = [
         source=(
             'Section 51(1): "All leaves except the sick leave, mourning leave '
             "and maternity leave which the labour is entitled to pursuant to "
-            'this Chapter are only facility and cannot be claimed as a matter '
+            "this Chapter are only facility and cannot be claimed as a matter "
             'of right"'
         ),
         topic="leave as of right",
@@ -313,7 +315,10 @@ SINGLE_DOCUMENT: list[Question] = [
     Question(
         question="What must an employer do for a labour who becomes physically incapacitated?",
         answerable=True,
-        expected_facts=[["suitable", "suited", "condition of his"], ["engage", "shall engage"]],
+        expected_facts=[
+            ["suitable", "suited", "condition of his"],
+            ["engage", "shall engage"],
+        ],
         expected_documents=[ACT],
         source=(
             'Section 143(4): "in cases where the labour who is physically '
@@ -330,7 +335,7 @@ SINGLE_DOCUMENT: list[Question] = [
         expected_facts=[["one hundred eighty", "180"]],
         expected_documents=[ACT],
         source=(
-            'Section 89 Explanation: "\'seasonal enterprise\' means an '
+            "Section 89 Explanation: \"'seasonal enterprise' means an "
             "enterprise which can be operated in a particular season only, "
             "and this term also includes an enterprise which cannot be "
             'operated for more than one hundred eighty days in a year"'
@@ -438,7 +443,9 @@ SINGLE_DOCUMENT += [
     Question(
         question="On what terms are contributions submitted under the Apache License?",
         answerable=True,
-        expected_facts=[["terms and conditions of this license", "this license", "same"]],
+        expected_facts=[
+            ["terms and conditions of this license", "this license", "same"]
+        ],
         expected_documents=[APACHE],
         source=(
             'Section 5 "Submission of Contributions": "any Contribution '
@@ -488,7 +495,7 @@ CROSS_DOCUMENT: list[Question] = [
             'Act Section 147: "shall get compulsory retirement after '
             'completing the age of fifty-eight years". Rules Rule 73: "The '
             "enterprise can submit an application to the Ministry, with basis "
-            'and reasons, if it desires to fix the retirement age below 58 '
+            "and reasons, if it desires to fix the retirement age below 58 "
             'years." The age is in the Act, the procedure for lowering it is '
             "in the Rules."
         ),
@@ -516,7 +523,7 @@ CROSS_DOCUMENT: list[Question] = [
         expected_documents=[ACT, RULES],
         source=(
             "Act Section 144(1) requires notice before terminating an "
-            'employment relation. Rules Rule 72: "by providing 15 days\' '
+            "employment relation. Rules Rule 72: \"by providing 15 days' "
             "notice. This information should be placed on the job portal site "
             "of the ministry and the website of the enterprise for a minimum "
             'of 15 days." The duty is in the Act, the period and publication '
@@ -574,7 +581,7 @@ CROSS_DOCUMENT: list[Question] = [
         source=(
             "Act Section 27 caps the contract at three years absent provision. "
             'Rules Rule 11: "on special circumstances, DoL may grant '
-            'permission for an additional 2 years after approval from the '
+            "permission for an additional 2 years after approval from the "
             'Ministry."'
         ),
         topic="cross: permit extension",
@@ -582,11 +589,14 @@ CROSS_DOCUMENT: list[Question] = [
     Question(
         question="Must a female labour do anything after her maternity leave ends?",
         answerable=True,
-        expected_facts=[["3 month", "three month"], ["birth certificate", "certificate"]],
+        expected_facts=[
+            ["3 month", "three month"],
+            ["birth certificate", "certificate"],
+        ],
         expected_documents=[ACT, RULES],
         source=(
-            "Act Section 45 grants the leave. Rules Rule 18: \"Within 3 months "
-            "from the end of maternity leave, female labor\" must submit a "
+            'Act Section 45 grants the leave. Rules Rule 18: "Within 3 months '
+            'from the end of maternity leave, female labor" must submit a '
             "birth certificate. The obligation exists only in the Rules."
         ),
         topic="cross: post-maternity duty",
@@ -664,8 +674,7 @@ OUT_OF_DOMAIN: list[Question] = [
         question="Which political party introduced the Labour Act?",
         answerable=False,
         source=(
-            "The Act's text contains no legislative history or party "
-            "attribution."
+            "The Act's text contains no legislative history or party " "attribution."
         ),
         topic="political history",
     ),

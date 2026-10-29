@@ -157,7 +157,9 @@ class LLMUsage:
         """Aggregate the per-call records accumulated in the agent state."""
         return cls(
             calls=len(records),
-            prompt_tokens=sum(int(record.get("prompt_tokens", 0)) for record in records),
+            prompt_tokens=sum(
+                int(record.get("prompt_tokens", 0)) for record in records
+            ),
             completion_tokens=sum(
                 int(record.get("completion_tokens", 0)) for record in records
             ),
@@ -256,14 +258,18 @@ class LLMClient:
         self.model_chain: list[str] = list(
             dict.fromkeys([self.model, *self.fallback_models])
         )
-        self.temperature = config.LLM_TEMPERATURE if temperature is None else temperature
+        self.temperature = (
+            config.LLM_TEMPERATURE if temperature is None else temperature
+        )
         self.max_tokens = max_tokens or config.LLM_MAX_TOKENS
         self.throttle_seconds = (
             config.LLM_MIN_SECONDS_BETWEEN_CALLS
             if throttle_seconds is None
             else throttle_seconds
         )
-        self.max_retries = config.LLM_MAX_RETRIES if max_retries is None else max_retries
+        self.max_retries = (
+            config.LLM_MAX_RETRIES if max_retries is None else max_retries
+        )
         # Models whose json_object response_format turned out to be rejected.
         # Remembered so one BadRequest does not cost a wasted call on every
         # subsequent prompt.
@@ -316,7 +322,9 @@ class LLMClient:
                 continue
             if is_fallback:
                 if not self._has_credentials(model):
-                    logger.warning("Skipping fallback %s: its API key is not set", model)
+                    logger.warning(
+                        "Skipping fallback %s: its API key is not set", model
+                    )
                     continue
                 logger.warning(
                     "Falling back to %s (%d of %d in the chain) after %s failed",

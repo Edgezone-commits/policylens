@@ -91,11 +91,7 @@ def build_responder_node(verify: bool = True) -> Callable[[AgentState], dict]:
                 "status": "ERROR",
                 "answer": state.get("answer") or "",
                 "confidence": 0.0,
-                "trace": [
-                    trace_entry(
-                        "responder", "Run failed", error=state["error"]
-                    )
-                ],
+                "trace": [trace_entry("responder", "Run failed", error=state["error"])],
             }
 
         # -- out of scope -----------------------------------------------

@@ -311,13 +311,19 @@ def render_history() -> None:
     columns[1].metric("Abstention rate", f"{(stats.get('abstention_rate') or 0):.0%}")
     columns[2].metric(
         "Mean confidence",
-        "n/a" if stats.get("mean_confidence") is None
-        else f"{stats['mean_confidence']:.2f}",
+        (
+            "n/a"
+            if stats.get("mean_confidence") is None
+            else f"{stats['mean_confidence']:.2f}"
+        ),
     )
     columns[3].metric(
         "Mean latency",
-        "n/a" if stats.get("mean_latency_seconds") is None
-        else f"{stats['mean_latency_seconds']:.1f}s",
+        (
+            "n/a"
+            if stats.get("mean_latency_seconds") is None
+            else f"{stats['mean_latency_seconds']:.1f}s"
+        ),
     )
     st.caption(
         "The abstention rate is the honesty metric to watch: near zero means "
@@ -334,8 +340,7 @@ def render_history() -> None:
             row.get("status", ""), STATUS_PRESENTATION["ERROR"]
         )
         with st.expander(
-            f"{presentation['icon']} {row.get('question')}  "
-            f"— {row.get('asked_at')}"
+            f"{presentation['icon']} {row.get('question')}  " f"— {row.get('asked_at')}"
         ):
             st.write(row.get("answer") or "_no answer_")
             citations = row.get("citations") or []

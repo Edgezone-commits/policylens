@@ -58,9 +58,7 @@ def build_retriever_node(store: VectorStore) -> Callable[[AgentState], dict]:
         retry_count = state.get("retry_count", 0)
         is_retry = retry_count > 0
 
-        top_k = (
-            config.RETRIEVAL_TOP_K_ON_RETRY if is_retry else config.RETRIEVAL_TOP_K
-        )
+        top_k = config.RETRIEVAL_TOP_K_ON_RETRY if is_retry else config.RETRIEVAL_TOP_K
         query = state.get("search_query") or state["question"]
         queries = [query]
         if is_retry and state["question"] not in queries:
@@ -95,9 +93,7 @@ def build_retriever_node(store: VectorStore) -> Callable[[AgentState], dict]:
         if not chunks:
             # Every query fell below the threshold. This is the abstention
             # path: no evidence, and the responder will say exactly that.
-            logger.info(
-                "No chunks above the relevance threshold for %r", query[:80]
-            )
+            logger.info("No chunks above the relevance threshold for %r", query[:80])
             return {
                 "chunks": [],
                 "top_similarity": 0.0,

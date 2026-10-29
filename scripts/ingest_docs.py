@@ -41,9 +41,7 @@ def parse_args() -> argparse.Namespace:
         help="Delete all existing chunks before ingesting (needed after a "
         "chunk_size change, so the index is not a mix of two settings)",
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Enable DEBUG logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable DEBUG logging")
     return parser.parse_args()
 
 
@@ -65,7 +63,9 @@ def main() -> int:
         store.reset()
 
     results = (
-        ingest_directory(target, store) if target.is_dir() else [ingest_file(target, store)]
+        ingest_directory(target, store)
+        if target.is_dir()
+        else [ingest_file(target, store)]
     )
 
     if not results:
@@ -79,7 +79,9 @@ def main() -> int:
     print("-" * 72)
     for result in results:
         if result.succeeded:
-            print(f"{result.source_document[:41]:<42}{result.pages:>8}{result.chunks:>9}")
+            print(
+                f"{result.source_document[:41]:<42}{result.pages:>8}{result.chunks:>9}"
+            )
         else:
             print(f"{result.source_document[:41]:<42}{'--':>8}{'--':>9}")
             print(f"  SKIPPED: {result.skipped_reason}")
@@ -88,8 +90,10 @@ def main() -> int:
     total_chunks = sum(result.chunks for result in results)
     failures = [result for result in results if not result.succeeded]
     print(f"{'TOTAL':<42}{'':>8}{total_chunks:>9}")
-    print(f"\nCollection now holds {store.count()} chunks across "
-          f"{len(store.list_documents())} document(s).")
+    print(
+        f"\nCollection now holds {store.count()} chunks across "
+        f"{len(store.list_documents())} document(s)."
+    )
 
     if failures:
         print(f"\n{len(failures)} document(s) could not be indexed (see above).")

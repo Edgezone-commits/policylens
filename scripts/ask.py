@@ -61,9 +61,7 @@ def parse_args() -> argparse.Namespace:
         dest="as_json",
         help="Print the full result as JSON (for piping into an evaluation)",
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Enable DEBUG logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable DEBUG logging")
     return parser.parse_args()
 
 
@@ -100,9 +98,7 @@ def print_answer(answer: AgentAnswer, show_trace: bool) -> None:
                 f"     method: {citation['method']} "
                 f"(match {citation['match_score']:.0f}/100)"
             )
-            for line in textwrap.wrap(
-                f'"{citation["quote"]}"', width=_WIDTH - 5
-            ):
+            for line in textwrap.wrap(f'"{citation["quote"]}"', width=_WIDTH - 5):
                 print(f"     {line}")
             if citation.get("note"):
                 for line in textwrap.wrap(
@@ -132,8 +128,11 @@ def print_answer(answer: AgentAnswer, show_trace: bool) -> None:
         f"intent {answer.intent or '-'} | retries {answer.retries} | "
         f"{answer.usage.calls} LLM call(s), "
         f"{answer.usage.prompt_tokens + answer.usage.completion_tokens} tokens"
-        + (f" | {answer.usage.fallback_calls} on the fallback model"
-           if answer.usage.fallback_calls else "")
+        + (
+            f" | {answer.usage.fallback_calls} on the fallback model"
+            if answer.usage.fallback_calls
+            else ""
+        )
     )
     print()
 

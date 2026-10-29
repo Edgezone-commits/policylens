@@ -84,9 +84,9 @@ BASIC_PAY = (
 
 ANGLES = {
     "probation query": 0.0,
-    PROBATION: 0.0,            # identical -> similarity 1.0
-    GRATUITY: 1.2,             # ~0.36 to the probation query
-    BASIC_PAY: 1.4,            # ~0.17 to the probation query
+    PROBATION: 0.0,  # identical -> similarity 1.0
+    GRATUITY: 1.2,  # ~0.36 to the probation query
+    BASIC_PAY: 1.4,  # ~0.17 to the probation query
     "gratuity query": 1.2,
 }
 
@@ -170,8 +170,8 @@ def test_weak_chunks_are_filtered_out_even_once_the_gate_passes(store):
     results = store.retrieve("probation query", top_k=5, threshold=0.30)
 
     returned = {r["chunk_id"] for r in results}
-    assert "act::p7::c0" in returned      # 1.00
-    assert "act::p20::c1" in returned     # ~0.36, above
+    assert "act::p7::c0" in returned  # 1.00
+    assert "act::p20::c1" in returned  # ~0.36, above
     assert "rules::p12::c0" not in returned  # ~0.17, below
 
 

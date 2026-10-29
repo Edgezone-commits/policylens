@@ -123,7 +123,9 @@ class QueryLog:
 
     # -- writing ------------------------------------------------------------
 
-    def record(self, answer: AgentAnswer, latency_seconds: float | None = None) -> int | None:
+    def record(
+        self, answer: AgentAnswer, latency_seconds: float | None = None
+    ) -> int | None:
         """Store one answered question. Returns its row id, or None on failure.
 
         Deliberately swallows its own errors. The caller has already produced a
@@ -208,8 +210,7 @@ class QueryLog:
             # Averaged over answered questions only. Including abstentions,
             # whose confidence is fixed at 0.0 by definition, would drag the
             # mean towards the abstention rate and measure nothing.
-            answered = connection.execute(
-                """
+            answered = connection.execute("""
                 SELECT AVG(confidence) AS mean_confidence,
                        AVG(latency_seconds) AS mean_latency,
                        AVG(llm_calls) AS mean_llm_calls,
@@ -217,8 +218,7 @@ class QueryLog:
                        SUM(retries) AS total_retries
                 FROM queries
                 WHERE status IN ('ANSWERED', 'PARTIALLY_VERIFIED')
-                """
-            ).fetchone()
+                """).fetchone()
 
         abstentions = by_status.get("INSUFFICIENT_EVIDENCE", 0) + by_status.get(
             "OUT_OF_SCOPE", 0

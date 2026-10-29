@@ -42,15 +42,17 @@ def answer(
     base = {
         "status": status,
         "answer": text,
-        "citations": citations
-        if citations is not None
-        else [
-            {
-                "source_document": "Nepal_Labour_Act_2074.pdf",
-                "verified": True,
-                "quote": "remains in a probation period for six months",
-            }
-        ],
+        "citations": (
+            citations
+            if citations is not None
+            else [
+                {
+                    "source_document": "Nepal_Labour_Act_2074.pdf",
+                    "verified": True,
+                    "quote": "remains in a probation period for six months",
+                }
+            ]
+        ),
         "confidence": confidence,
         "top_similarity": 0.62,
         "retries": 0,
@@ -76,7 +78,7 @@ UNANSWERABLE = Question(
 
 
 def test_normalise_flattens_case_whitespace_and_pdf_quoting():
-    messy = 'The  employer’s\n“basic   remuneration” – see above'
+    messy = "The  employer’s\n“basic   remuneration” – see above"
     assert normalise(messy) == 'the employer\'s "basic remuneration" - see above'
 
 
@@ -125,7 +127,9 @@ def test_an_answer_missing_the_fact_is_wrong_and_says_which_fact():
 
 
 def test_abstaining_on_an_answerable_question_is_a_false_abstention():
-    result = grade(PROBATION, answer(status="INSUFFICIENT_EVIDENCE", text="No evidence."))
+    result = grade(
+        PROBATION, answer(status="INSUFFICIENT_EVIDENCE", text="No evidence.")
+    )
 
     assert result.outcome == "FALSE_ABSTENTION"
 
@@ -164,7 +168,9 @@ def test_citing_the_wrong_document_is_recorded_without_failing_the_answer():
 def test_abstaining_on_an_unanswerable_question_is_correct():
     """The behaviour the project exists for, so it scores as a success."""
     for status in ("INSUFFICIENT_EVIDENCE", "OUT_OF_SCOPE"):
-        result = grade(UNANSWERABLE, answer(status=status, text="Not in these documents."))
+        result = grade(
+            UNANSWERABLE, answer(status=status, text="Not in these documents.")
+        )
         assert result.outcome == "CORRECT", status
 
 
@@ -180,9 +186,7 @@ def test_answering_an_unanswerable_question_is_a_false_answer():
 
 def test_a_pipeline_failure_is_not_counted_as_either_mistake():
     """A run that never happened made no claim about the documents."""
-    result = grade(
-        PROBATION, answer(status="ERROR", text="", error="quota exhausted")
-    )
+    result = grade(PROBATION, answer(status="ERROR", text="", error="quota exhausted"))
 
     assert result.outcome == "ERROR"
     totals = aggregate([result])
@@ -199,15 +203,15 @@ def test_a_pipeline_failure_is_not_counted_as_either_mistake():
 def test_the_two_error_rates_are_computed_over_their_own_denominators():
     """A false answer rate diluted by answerable questions would flatter the system."""
     results = [
-        grade(PROBATION, answer()),                                   # correct
-        grade(PROBATION, answer(status="OUT_OF_SCOPE")),              # false abstention
+        grade(PROBATION, answer()),  # correct
+        grade(PROBATION, answer(status="OUT_OF_SCOPE")),  # false abstention
         grade(UNANSWERABLE, answer(status="INSUFFICIENT_EVIDENCE")),  # correct
-        grade(UNANSWERABLE, answer(text="Fifteen days.")),            # false answer
+        grade(UNANSWERABLE, answer(text="Fifteen days.")),  # false answer
     ]
     totals = aggregate(results)
 
-    assert totals["false_abstention_rate"] == 0.5   # 1 of 2 answerable
-    assert totals["false_answer_rate"] == 0.5       # 1 of 2 unanswerable
+    assert totals["false_abstention_rate"] == 0.5  # 1 of 2 answerable
+    assert totals["false_answer_rate"] == 0.5  # 1 of 2 unanswerable
     assert totals["counts"]["CORRECT"] == 2
 
 

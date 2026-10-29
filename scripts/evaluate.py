@@ -181,28 +181,42 @@ def print_report(results: list[Graded], totals: dict) -> None:
     line = "=" * 74
     print(f"\n{line}\nPHASE 6 EVALUATION\n{line}")
     print(f"Dataset        : {dataset.summary()}")
-    print(f"Ran            : {totals['questions']} question(s), "
-          f"{totals['scored']} scored, {totals['errors']} not run")
+    print(
+        f"Ran            : {totals['questions']} question(s), "
+        f"{totals['scored']} scored, {totals['errors']} not run"
+    )
     print(f"Model          : {config.LLM_MODEL}")
     print(f"Chain          : {', '.join(config.LLM_FALLBACK_MODELS)}")
     print(f"Threshold      : {config.RETRIEVAL_SIMILARITY_THRESHOLD}")
 
     print(f"\n{line}\nHONESTY -- the two error types, kept apart\n{line}")
-    print(f"  False ANSWER rate     {_pct(totals['false_answer_rate']):>8}   "
-          f"answered a question the corpus cannot answer")
-    print(f"  False ABSTENTION rate {_pct(totals['false_abstention_rate']):>8}   "
-          f"refused a question the corpus answers")
+    print(
+        f"  False ANSWER rate     {_pct(totals['false_answer_rate']):>8}   "
+        f"answered a question the corpus cannot answer"
+    )
+    print(
+        f"  False ABSTENTION rate {_pct(totals['false_abstention_rate']):>8}   "
+        f"refused a question the corpus answers"
+    )
 
     print(f"\n{line}\nCORRECTNESS AND GROUNDING\n{line}")
-    print(f"  Answer accuracy          {_pct(totals['answer_accuracy']):>8}   "
-          f"of the answers given, how many carry the decisive fact")
-    print(f"  Citation verification    "
-          f"{_pct(totals['citation_verification_rate']):>8}   "
-          f"of {totals['citations_total']} quotes, confirmed against the passage")
-    print(f"  Citation recall          {_pct(totals['citation_recall']):>8}   "
-          f"cited every document the answer needs")
-    print(f"  Overall correct          {_pct(totals['overall_correct_rate']):>8}   "
-          f"right decision, whichever decision was right")
+    print(
+        f"  Answer accuracy          {_pct(totals['answer_accuracy']):>8}   "
+        f"of the answers given, how many carry the decisive fact"
+    )
+    print(
+        f"  Citation verification    "
+        f"{_pct(totals['citation_verification_rate']):>8}   "
+        f"of {totals['citations_total']} quotes, confirmed against the passage"
+    )
+    print(
+        f"  Citation recall          {_pct(totals['citation_recall']):>8}   "
+        f"cited every document the answer needs"
+    )
+    print(
+        f"  Overall correct          {_pct(totals['overall_correct_rate']):>8}   "
+        f"right decision, whichever decision was right"
+    )
 
     if totals["cross_document_questions"]:
         print(f"\n{line}\nCROSS-DOCUMENT, BROKEN OUT\n{line}")
@@ -212,11 +226,14 @@ def print_report(results: list[Graded], totals: dict) -> None:
             "one document alone would still look fine.\n"
         )
         print(f"  Questions             {totals['cross_document_questions']:>8}")
-        print(f"  Answer accuracy       "
-              f"{_pct(totals['cross_document_accuracy']):>8}")
-        print(f"  Cited BOTH documents  "
-              f"{_pct(totals['cross_document_both_cited']):>8}   "
-              f"citing one of two is a half answer")
+        print(
+            f"  Answer accuracy       " f"{_pct(totals['cross_document_accuracy']):>8}"
+        )
+        print(
+            f"  Cited BOTH documents  "
+            f"{_pct(totals['cross_document_both_cited']):>8}   "
+            f"citing one of two is a half answer"
+        )
 
     print(f"\n{line}\nIS THE CONFIDENCE FORMULA WORTH KEEPING\n{line}")
     correct = totals["mean_confidence_correct"]
@@ -226,25 +243,34 @@ def print_report(results: list[Graded], totals: dict) -> None:
     print(f"  mean confidence, wrong answers      {_num(wrong):>7}")
     print(f"  separation                          {_num(separation):>7}")
     if separation is None:
-        print("  -> not measurable from this run: it needs both a correct and "
-              "an incorrect answer to compare.")
+        print(
+            "  -> not measurable from this run: it needs both a correct and "
+            "an incorrect answer to compare."
+        )
     elif separation >= 0.10:
         print("  -> confidence tracks correctness; the formula is doing work.")
     else:
-        print("  -> confidence barely separates right from wrong. Re-fit the "
-              "weights in config or stop reporting the number.")
+        print(
+            "  -> confidence barely separates right from wrong. Re-fit the "
+            "weights in config or stop reporting the number."
+        )
 
     print(f"\n{line}\nOUTCOMES\n{line}")
     for name, count in totals["counts"].items():
         if count:
             print(f"  {name:<18} {count}")
 
-    failures = [r for r in results if r.outcome in {"FALSE_ANSWER", "WRONG_ANSWER",
-                                                    "FALSE_ABSTENTION"}]
+    failures = [
+        r
+        for r in results
+        if r.outcome in {"FALSE_ANSWER", "WRONG_ANSWER", "FALSE_ABSTENTION"}
+    ]
     if failures:
         print(f"\n{line}\nEVERY FAILURE, IN FULL\n{line}")
-        print("Listed because an aggregate that hides its failures cannot be "
-              "defended.\n")
+        print(
+            "Listed because an aggregate that hides its failures cannot be "
+            "defended.\n"
+        )
         for r in failures:
             print(f"  [{r.outcome}] {r.question}")
             print(f"      topic   : {r.topic}")
@@ -273,13 +299,16 @@ def print_recall(rows: list[dict], totals: dict, k: int) -> None:
         "running system\nsearches on the router's rewritten query, which is "
         "often better targeted.\n"
     )
-    print(f"  Recall@{k}, all answerable   "
-          f"{_pct(totals['recall_at_k']):>8}  ({totals['questions']} questions)")
-    print(f"  Recall@{k}, single-document  "
-          f"{_pct(totals['recall_at_k_single']):>8}")
-    print(f"  Recall@{k}, cross-document   "
-          f"{_pct(totals['recall_at_k_cross']):>8}  "
-          f"needs BOTH documents in the top {k}")
+    print(
+        f"  Recall@{k}, all answerable   "
+        f"{_pct(totals['recall_at_k']):>8}  ({totals['questions']} questions)"
+    )
+    print(f"  Recall@{k}, single-document  " f"{_pct(totals['recall_at_k_single']):>8}")
+    print(
+        f"  Recall@{k}, cross-document   "
+        f"{_pct(totals['recall_at_k_cross']):>8}  "
+        f"needs BOTH documents in the top {k}"
+    )
     print(f"  mean best similarity      {_num(totals['mean_best_similarity']):>8}")
 
     misses = [r for r in rows if not r["hit"]]
@@ -434,8 +463,10 @@ def main() -> int:
         print_recall(rows, recall_totals, args.k)
         if not args.no_save:
             path = save_recall(rows, recall_totals, args.k)
-            print(f"\nFull per-question retrieval results: "
-                  f"{path.relative_to(Path.cwd())}")
+            print(
+                f"\nFull per-question retrieval results: "
+                f"{path.relative_to(Path.cwd())}"
+            )
         return 0
 
     agent = PolicyLensAgent(verify=not args.no_verify)
@@ -452,8 +483,10 @@ def main() -> int:
             "citation\nfigures or the confidence.\n"
         )
 
-    print(f"Evaluating against {agent.store.count()} chunks "
-          f"from {len(agent.store.document_names())} document(s)\n")
+    print(
+        f"Evaluating against {agent.store.count()} chunks "
+        f"from {len(agent.store.document_names())} document(s)\n"
+    )
 
     results = run(questions, agent)
     if not results:
@@ -472,8 +505,9 @@ def main() -> int:
     # a number to note, so CI can hold the line on it.
     false_answers = totals["counts"]["FALSE_ANSWER"]
     if false_answers:
-        print(f"\nFAIL: {false_answers} false answer(s). "
-              f"See the failure list above.")
+        print(
+            f"\nFAIL: {false_answers} false answer(s). " f"See the failure list above."
+        )
         return 1
     return 0
 

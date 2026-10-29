@@ -140,7 +140,9 @@ def retry_node(state: AgentState) -> dict:
     elif state.get("citations"):
         reason = "no citation could be confirmed against its passage"
     else:
-        reason = "the rewritten query found nothing; retrying with the question as asked"
+        reason = (
+            "the rewritten query found nothing; retrying with the question as asked"
+        )
 
     logger.info("Retry %d/%d: %s", attempt, config.MAX_RETRIES, reason)
     return {
