@@ -524,12 +524,8 @@ MIT — see [LICENSE](LICENSE).
 
 **Edgezone-commits**
 GitHub: [@Edgezone-commits](https://github.com/Edgezone-commits) ·
-Email: kesrwag057@gmail.com
-
-<!-- Add your LinkedIn here, e.g.
-     LinkedIn: [your name](https://www.linkedin.com/in/your-handle/)
-     It was left out rather than guessed: a dead link in a README is worse
-     than a missing one. -->
+Email: kesrwag057@gmail.com ·
+LinkedIn: [Parashar Wagle](https://www.linkedin.com/in/parashar-wagle-a0a439319/)
 
 ### Corpus and references
 
