@@ -1,0 +1,31 @@
+# Runs on every commit once `pre-commit install` has been run.
+#
+# WHY these three and nothing more: formatting and import order are decisions
+# nobody should spend review time on, and a stray trailing newline or a 20MB
+# PDF committed by accident are both cheaper to catch here than in review.
+# Anything that needs the dependency set installed (pytest, mypy) is left to
+# CI -- a commit hook that takes two minutes gets uninstalled.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+        # The corpus PDFs are gitignored; this is the backstop for when
+        # someone adds one with `git add -f`.
+        args: ["--maxkb=2000"]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+
+  - repo: https://github.com/psf/black
+    rev: 26.10.1
+    hooks:
+      - id: black

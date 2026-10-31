@@ -19,7 +19,7 @@ from evidence rather than from an opinion.
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from src.agent.llm import LLMClient, LLMError, call_record
 from src.agent.prompts import ROUTER_SYSTEM, build_router_prompt
@@ -135,7 +135,9 @@ def build_router_node(
         if intent not in _VALID_INTENTS:
             # An unrecognised label is not a reason to refuse: fall back to the
             # permissive branch, where evidence still has to be found.
-            logger.warning("Router returned unknown intent %r; using DOCUMENT_QA", intent)
+            logger.warning(
+                "Router returned unknown intent %r; using DOCUMENT_QA", intent
+            )
             intent = "DOCUMENT_QA"
 
         named = payload.get("target_documents") or []

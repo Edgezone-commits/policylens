@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 import re
 import threading
@@ -25,6 +26,27 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+# Set BEFORE litellm is imported, because litellm reads it at import time.
+#
+# By default litellm fetches its model-pricing map over the network while
+# being imported. Two problems with that here, and the second is the real
+# one:
+#   * It is slow. Importing litellm costs about 15s on the development
+#     machine with the fetch and about 12s without, and the test suite pays
+#     it at collection.
+#   * It is a NETWORK CALL AT IMPORT, in a project whose stated property is
+#     that the whole suite runs with no key and no network. A dependency that
+#     quietly reaches the internet to be imported makes that claim false in a
+#     way no test would notice -- it would simply be slower on a plane and
+#     fail in an air-gapped CI runner, long after anyone connected the two.
+# The map ships inside the package, so the local copy is what this project
+# wants in every case. Nothing here reads the pricing anyway; token counts
+# come from the provider's own usage field.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
+# Do not move this import above the line before it. litellm reads that
+# variable while being imported, so sorting these two into one block would
+# silently restore the network fetch.
 import litellm
 from litellm import exceptions as llm_exceptions
 
@@ -157,7 +179,9 @@ class LLMUsage:
         """Aggregate the per-call records accumulated in the agent state."""
         return cls(
             calls=len(records),
-            prompt_tokens=sum(int(record.get("prompt_tokens", 0)) for record in records),
+            prompt_tokens=sum(
+                int(record.get("prompt_tokens", 0)) for record in records
+            ),
             completion_tokens=sum(
                 int(record.get("completion_tokens", 0)) for record in records
             ),
@@ -256,14 +280,18 @@ class LLMClient:
         self.model_chain: list[str] = list(
             dict.fromkeys([self.model, *self.fallback_models])
         )
-        self.temperature = config.LLM_TEMPERATURE if temperature is None else temperature
+        self.temperature = (
+            config.LLM_TEMPERATURE if temperature is None else temperature
+        )
         self.max_tokens = max_tokens or config.LLM_MAX_TOKENS
         self.throttle_seconds = (
             config.LLM_MIN_SECONDS_BETWEEN_CALLS
             if throttle_seconds is None
             else throttle_seconds
         )
-        self.max_retries = config.LLM_MAX_RETRIES if max_retries is None else max_retries
+        self.max_retries = (
+            config.LLM_MAX_RETRIES if max_retries is None else max_retries
+        )
         # Models whose json_object response_format turned out to be rejected.
         # Remembered so one BadRequest does not cost a wasted call on every
         # subsequent prompt.
@@ -316,7 +344,9 @@ class LLMClient:
                 continue
             if is_fallback:
                 if not self._has_credentials(model):
-                    logger.warning("Skipping fallback %s: its API key is not set", model)
+                    logger.warning(
+                        "Skipping fallback %s: its API key is not set", model
+                    )
                     continue
                 logger.warning(
                     "Falling back to %s (%d of %d in the chain) after %s failed",

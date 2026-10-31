@@ -231,7 +231,9 @@ def create_app(
                     destination.write(chunk)
 
             if written == 0:
-                raise HTTPException(status_code=422, detail="The uploaded file is empty.")
+                raise HTTPException(
+                    status_code=422, detail="The uploaded file is empty."
+                )
 
             result = ingest_file(temporary_path, agent.store)
 

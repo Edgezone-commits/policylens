@@ -216,7 +216,9 @@ def test_a_fallback_without_a_key_is_skipped_with_a_clear_error(monkeypatch, cli
 
     monkeypatch.setattr(llm_module.litellm, "completion", completion)
     monkeypatch.setattr(client, "_backoff_seconds", lambda retry: 0.0)
-    monkeypatch.setattr(LLMClient, "_has_credentials", staticmethod(lambda model: False))
+    monkeypatch.setattr(
+        LLMClient, "_has_credentials", staticmethod(lambda model: False)
+    )
 
     with pytest.raises(LLMError, match="RateLimitError"):
         client.complete("hello")
@@ -260,9 +262,7 @@ def test_json_mode_is_dropped_and_remembered_when_a_provider_rejects_it(
     assert seen == [True, False, False]
 
 
-def test_a_truncated_reply_keeps_growing_the_budget_until_it_fits(
-    monkeypatch, client
-):
+def test_a_truncated_reply_keeps_growing_the_budget_until_it_fits(monkeypatch, client):
     """A doubled budget has to be USED, not logged and discarded.
 
     The loop used to allow two attempts total, so the second truncation
@@ -290,11 +290,12 @@ def test_a_truncated_reply_keeps_growing_the_budget_until_it_fits(
 def test_a_reply_still_truncated_at_the_ceiling_is_reported_as_truncated(
     monkeypatch, client
 ):
-    """"No JSON object found" sends the next reader after the prompt.
+    """ "No JSON object found" sends the next reader after the prompt.
 
     The budget is what ran out, and the number they need is the one it ran out
     at, so the error says both.
     """
+
     def completion(**kwargs):
         return fake_reply('{"answer": "cut off mid-str', finish_reason="length")
 
@@ -327,7 +328,6 @@ def test_a_truncation_does_not_spend_the_reprompt_allowance(monkeypatch, client)
     assert prompts[0] == prompts[1]
 
 
-
 def test_complete_json_reprompts_once_then_gives_up(monkeypatch, client):
     replies = ["not json at all", "still not json"]
 
@@ -354,12 +354,21 @@ def test_a_truncated_reply_is_retried_with_a_bigger_budget_not_a_scolding(
     seen: list[dict] = []
 
     def completion(**kwargs):
-        seen.append({"max_tokens": kwargs["max_tokens"], "prompt": kwargs["messages"][-1]["content"]})
+        seen.append(
+            {
+                "max_tokens": kwargs["max_tokens"],
+                "prompt": kwargs["messages"][-1]["content"],
+            }
+        )
         if len(seen) == 1:
             # A JSON object cut off mid-string, exactly as Gemini returned one.
-            return fake_reply('{\n  "answer": "Under the Labour Act, the employer',
-                              finish_reason="length")
-        return fake_reply('{"answer": "Under the Labour Act, the employer deposits 8.33%."}')
+            return fake_reply(
+                '{\n  "answer": "Under the Labour Act, the employer',
+                finish_reason="length",
+            )
+        return fake_reply(
+            '{"answer": "Under the Labour Act, the employer deposits 8.33%."}'
+        )
 
     monkeypatch.setattr(llm_module.litellm, "completion", completion)
 
@@ -399,7 +408,9 @@ def test_thinking_models_get_their_own_token_headroom(monkeypatch, client):
         return fake_reply("ok")
 
     monkeypatch.setattr(llm_module.litellm, "completion", completion)
-    monkeypatch.setattr(LLMClient, "_supports_reasoning", staticmethod(lambda model: True))
+    monkeypatch.setattr(
+        LLMClient, "_supports_reasoning", staticmethod(lambda model: True)
+    )
 
     client.complete("analyse this", max_tokens=1024, simple_task=False)
     client.complete("classify this", max_tokens=1024, simple_task=True)
@@ -526,7 +537,6 @@ def test_an_entirely_spent_chain_says_so_instead_of_blaming_the_last_error(
     assert "POLICYLENS_FALLBACK_MODELS" in str(caught.value)
 
 
-
 def test_a_rejected_reasoning_effort_is_dropped_and_remembered(monkeypatch, client):
     """Groq refuses the "disable" value, so sending it twice buys two wasted calls.
 
@@ -548,7 +558,9 @@ def test_a_rejected_reasoning_effort_is_dropped_and_remembered(monkeypatch, clie
         return fake_reply("DOCUMENT_QA")
 
     monkeypatch.setattr(llm_module.litellm, "completion", completion)
-    monkeypatch.setattr(LLMClient, "_supports_reasoning", staticmethod(lambda model: True))
+    monkeypatch.setattr(
+        LLMClient, "_supports_reasoning", staticmethod(lambda model: True)
+    )
 
     assert client.complete("classify this", simple_task=True).text == "DOCUMENT_QA"
     assert client.complete("classify that", simple_task=True).text == "DOCUMENT_QA"
@@ -576,7 +588,9 @@ def test_dropping_reasoning_effort_restores_the_thinking_budget(monkeypatch, cli
         return fake_reply("ok")
 
     monkeypatch.setattr(llm_module.litellm, "completion", completion)
-    monkeypatch.setattr(LLMClient, "_supports_reasoning", staticmethod(lambda model: True))
+    monkeypatch.setattr(
+        LLMClient, "_supports_reasoning", staticmethod(lambda model: True)
+    )
 
     client.complete("classify this", max_tokens=1024, simple_task=True)
     # The rejected attempt was sized for a model with thinking off; the retry
@@ -586,7 +600,6 @@ def test_dropping_reasoning_effort_restores_the_thinking_budget(monkeypatch, cli
     # And the next simple task skips the doomed attempt, keeping the headroom.
     client.complete("classify that", max_tokens=1024, simple_task=True)
     assert budgets[2:] == [1024 + config.LLM_THINKING_TOKEN_HEADROOM]
-
 
 
 def test_complete_json_reprompts_when_a_required_key_is_missing(monkeypatch, client):

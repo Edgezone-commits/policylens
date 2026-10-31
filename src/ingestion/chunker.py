@@ -151,9 +151,7 @@ def chunk_documents(
             # report a false miss for a chunk that genuinely holds the answer.
             spanned = [section] if section else []
             spanned += [
-                label
-                for offset, label in headings
-                if start_index <= offset < end_index
+                label for offset, label in headings if start_index <= offset < end_index
             ]
             # Deduplicate while preserving reading order.
             spanned = list(dict.fromkeys(spanned))

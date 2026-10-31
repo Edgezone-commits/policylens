@@ -22,6 +22,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Its own job, not a step in `test`: it needs ruff and black and nothing
+  # else, so it finishes in seconds while the test job is still installing
+  # torch, and a formatting slip is reported without waiting for the suite.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the linters only
+        # Pinned to the same versions as requirements-dev.txt and
+        # .pre-commit-config.yaml. A newer black in CI than in the commit
+        # hook fails the build on code the hook just approved.
+        run: pip install ruff==0.17.3 black==26.10.1
+
+      - name: ruff and black, through the Makefile
+        # Through `make`, not as two bare commands, so the Makefile the
+        # README tells people to use is itself exercised on every push. A
+        # Makefile nobody runs in CI is documentation that rots silently --
+        # and this one cannot be run on the development machine, which is
+        # Windows without make.
+        run: make lint VENV_PYTHON=python
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -69,7 +96,8 @@ jobs:
         # pass without one. Deselecting rather than skipping so a test that
         # quietly started needing the network shows up as a collection error
         # instead of a silent skip.
-        run: pytest -m "not llm" --durations=10
+        # Also through the Makefile, for the reason given in the lint job.
+        run: make test VENV_PYTHON=python PYTEST_ARGS=--durations=10
 
       - name: Confirm the suite needs no API key
         # Guards the property above. If a test starts reading a key from the
@@ -113,3 +141,37 @@ jobs:
           SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
           print("embedding model present offline")
           PY
+
+  docker-space:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the Hugging Face Space image
+        # A second Dockerfile is a drift risk, and this job is the price of
+        # keeping one. deploy/huggingface/Dockerfile exists because a Docker
+        # Space runs the CMD of the Dockerfile at its repo root and needs
+        # BOTH processes, while the root Dockerfile's CMD is the API alone so
+        # that docker-compose can run the one image twice. Building it here
+        # means the two go red together, on a push, rather than silently
+        # diverging until someone tries to deploy.
+        #
+        # The corpus download and ingest steps inside it are deliberately
+        # tolerant of a dead third-party host, so this build does not depend
+        # on one.
+        run: docker build -f deploy/huggingface/Dockerfile -t policylens-space:ci .
+
+      - name: Check the Space image runs as uid 1000
+        # Hugging Face expects it, and a root container there fails to write
+        # its own cache.
+        run: |
+          uid=$(docker run --rm policylens-space:ci id -u)
+          echo "space image runs as uid: $uid"
+          test "$uid" = "1000"
+
+      - name: Check the entrypoint is executable and valid shell
+        run: |
+          docker run --rm policylens-space:ci test -x ./entrypoint.sh
+          docker run --rm policylens-space:ci bash -n ./entrypoint.sh
+          echo "entrypoint is executable and parses"

@@ -1,0 +1,6 @@
+# Revisions to skip when running `git blame`. Pure-formatting commits only.
+#   git blame --ignore-revs-file .git-blame-ignore-revs <file>
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs   (set it once)
+
+# chore: format -- black 26.10.1 over the whole codebase, no behaviour change.
+e3e24840fbbaccfdde9c86a5437f8fbcd50c8cea

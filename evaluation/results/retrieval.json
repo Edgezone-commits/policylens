@@ -1,0 +1,1337 @@
+{
+  "ran_at": "2026-10-29T22:22:02",
+  "dataset": "53 questions: 28 single-document, 10 cross-document, 10 out-of-domain, 5 adversarial",
+  "group": "answerable",
+  "index": "reference",
+  "embedding_model": "all-MiniLM-L6-v2",
+  "chunks_indexed": 279,
+  "documents": [
+    {
+      "source_document": "Apache_License_2.0.txt",
+      "chunk_count": 13
+    },
+    {
+      "source_document": "Nepal_Labour_Act_2074.pdf",
+      "chunk_count": 234
+    },
+    {
+      "source_document": "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+      "chunk_count": 32
+    }
+  ],
+  "note": "Retrieval only: no LLM, and the relevance threshold was not applied. Document-level ground truth, searched on the question as asked rather than the router's rewrite -- a floor on the live retriever.",
+  "totals": {
+    "questions": 38,
+    "ks": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "searched_depth": 10,
+    "at_k": {
+      "1": {
+        "all": {
+          "hit_rate": 0.868,
+          "recall_strict": 0.605,
+          "recall_fraction": 0.737
+        },
+        "single_document": {
+          "hit_rate": 0.821,
+          "recall_strict": 0.821,
+          "recall_fraction": 0.821
+        },
+        "cross_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.0,
+          "recall_fraction": 0.5
+        }
+      },
+      "3": {
+        "all": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.921,
+          "recall_fraction": 0.961
+        },
+        "single_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 1.0,
+          "recall_fraction": 1.0
+        },
+        "cross_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.7,
+          "recall_fraction": 0.85
+        }
+      },
+      "5": {
+        "all": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.921,
+          "recall_fraction": 0.961
+        },
+        "single_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 1.0,
+          "recall_fraction": 1.0
+        },
+        "cross_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.7,
+          "recall_fraction": 0.85
+        }
+      },
+      "10": {
+        "all": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.974,
+          "recall_fraction": 0.987
+        },
+        "single_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 1.0,
+          "recall_fraction": 1.0
+        },
+        "cross_document": {
+          "hit_rate": 1.0,
+          "recall_strict": 0.9,
+          "recall_fraction": 0.95
+        }
+      }
+    },
+    "mrr": {
+      "all": 0.925,
+      "single_document": 0.899,
+      "cross_document": 1.0
+    },
+    "chunks_indexed": 279
+  },
+  "results": [
+    {
+      "question": "What is the maximum probation period for a worker?",
+      "topic": "probation",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5192,
+        0.5088,
+        0.4937,
+        0.482,
+        0.4707,
+        0.4641,
+        0.4536,
+        0.4478,
+        0.4424,
+        0.4413
+      ]
+    },
+    {
+      "question": "What notice period applies to terminating a labour for misconduct?",
+      "topic": "exclusion from notice",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.7163,
+        0.6615,
+        0.6557,
+        0.6528,
+        0.6198,
+        0.613,
+        0.5935,
+        0.5856,
+        0.583,
+        0.5686
+      ]
+    },
+    {
+      "question": "For how long may a foreign labour's contract run if the contract is silent?",
+      "topic": "foreign labour term",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5906,
+        0.4897,
+        0.4879,
+        0.4872,
+        0.4847,
+        0.479,
+        0.4785,
+        0.4754,
+        0.474,
+        0.4736
+      ]
+    },
+    {
+      "question": "How many hours may a labour be made to work in a day and in a week?",
+      "topic": "working hours",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6815,
+        0.5576,
+        0.5371,
+        0.5089,
+        0.5024,
+        0.4917,
+        0.4907,
+        0.484,
+        0.4643,
+        0.4631
+      ]
+    },
+    {
+      "question": "How much rest must a labour get during continuous work?",
+      "topic": "rest break",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.6767,
+        0.5183,
+        0.5158,
+        0.5094,
+        0.5082,
+        0.5026,
+        0.5021,
+        0.4962,
+        0.4956,
+        0.4926
+      ]
+    },
+    {
+      "question": "How much overtime work is a labour allowed to do?",
+      "topic": "overtime limit",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.6535,
+        0.6523,
+        0.6123,
+        0.5554,
+        0.5414,
+        0.5345,
+        0.5322,
+        0.509,
+        0.4985,
+        0.4961
+      ]
+    },
+    {
+      "question": "How much weekly leave is a labour entitled to?",
+      "topic": "weekly leave",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5978,
+        0.5743,
+        0.5716,
+        0.5691,
+        0.5677,
+        0.521,
+        0.5163,
+        0.5153,
+        0.5052,
+        0.4991
+      ]
+    },
+    {
+      "question": "How much paid public leave does a labour get each year?",
+      "topic": "public leave",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.521,
+        0.4931,
+        0.4921,
+        0.4851,
+        0.4785,
+        0.4719,
+        0.4579,
+        0.4449,
+        0.4432,
+        0.439
+      ]
+    },
+    {
+      "question": "How long is maternity leave and how much of it is paid?",
+      "topic": "maternity leave",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6381,
+        0.6261,
+        0.6239,
+        0.5413,
+        0.5001,
+        0.4829,
+        0.4813,
+        0.4705,
+        0.4276,
+        0.4108
+      ]
+    },
+    {
+      "question": "When must a pregnant labour begin and end maternity leave?",
+      "topic": "maternity leave timing",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.709,
+        0.6513,
+        0.6483,
+        0.5262,
+        0.518,
+        0.4637,
+        0.4518,
+        0.4499,
+        0.4467,
+        0.4389
+      ]
+    },
+    {
+      "question": "Which leaves can a labour claim as a matter of right?",
+      "topic": "leave as of right",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6259,
+        0.5813,
+        0.5747,
+        0.5629,
+        0.5597,
+        0.5563,
+        0.5547,
+        0.538,
+        0.5376,
+        0.5365
+      ]
+    },
+    {
+      "question": "How much must the employer deposit for gratuity each month?",
+      "topic": "gratuity rate",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6199,
+        0.5771,
+        0.5729,
+        0.5545,
+        0.5446,
+        0.5212,
+        0.48,
+        0.4204,
+        0.4034,
+        0.3895
+      ]
+    },
+    {
+      "question": "What is a labour entitled to as a festival expense?",
+      "topic": "festival expense",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.762,
+        0.72,
+        0.6329,
+        0.5517,
+        0.5045,
+        0.5035,
+        0.4776,
+        0.4715,
+        0.4636,
+        0.4621
+      ]
+    },
+    {
+      "question": "When must a labour employed for less than a month be paid?",
+      "topic": "pay timing, short engagement",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5753,
+        0.5668,
+        0.5666,
+        0.5493,
+        0.5296,
+        0.5294,
+        0.5281,
+        0.5197,
+        0.5152,
+        0.5148
+      ]
+    },
+    {
+      "question": "When must a labour in casual work be paid?",
+      "topic": "pay timing, casual work",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6183,
+        0.5785,
+        0.5668,
+        0.5621,
+        0.5535,
+        0.552,
+        0.5516,
+        0.5376,
+        0.5362,
+        0.5337
+      ]
+    },
+    {
+      "question": "After how long a suspension may the employer terminate the labour?",
+      "topic": "suspension limit",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6692,
+        0.6655,
+        0.6538,
+        0.6156,
+        0.5984,
+        0.5888,
+        0.5821,
+        0.5728,
+        0.5593,
+        0.5291
+      ]
+    },
+    {
+      "question": "Within what time must a decision on disciplinary action be taken?",
+      "topic": "disciplinary timeline",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5156,
+        0.5147,
+        0.5143,
+        0.5041,
+        0.4926,
+        0.4877,
+        0.4853,
+        0.4848,
+        0.4686,
+        0.4679
+      ]
+    },
+    {
+      "question": "What must an employer do for a labour who becomes physically incapacitated?",
+      "topic": "incapacity redeployment",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.6046,
+        0.5364,
+        0.5226,
+        0.5192,
+        0.4912,
+        0.4903,
+        0.4862,
+        0.4661,
+        0.4584,
+        0.4554
+      ]
+    },
+    {
+      "question": "What counts as a seasonal enterprise under the Act?",
+      "topic": "seasonal enterprise",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6604,
+        0.4937,
+        0.4115,
+        0.3973,
+        0.3921,
+        0.3882,
+        0.3724,
+        0.3663,
+        0.3658,
+        0.362
+      ]
+    },
+    {
+      "question": "What are the charges for a labour permit?",
+      "topic": "labour permit charges",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5719,
+        0.537,
+        0.5142,
+        0.5135,
+        0.5059,
+        0.5014,
+        0.4954,
+        0.493,
+        0.4895,
+        0.4858
+      ]
+    },
+    {
+      "question": "Within how long must the Department of Labour notify a rejected permit applicant?",
+      "topic": "permit rejection notice",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5248,
+        0.5148,
+        0.5091,
+        0.4788,
+        0.457,
+        0.4509,
+        0.4498,
+        0.4497,
+        0.4362,
+        0.4337
+      ]
+    },
+    {
+      "question": "How long must an employer keep payment and attendance records?",
+      "topic": "record retention",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.4882,
+        0.4808,
+        0.4583,
+        0.4536,
+        0.4401,
+        0.4394,
+        0.426,
+        0.4245,
+        0.4203,
+        0.4162
+      ]
+    },
+    {
+      "question": "Within how long must a worker apply to have a disability percentage determined?",
+      "topic": "disability determination",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5091,
+        0.4929,
+        0.4213,
+        0.381,
+        0.3729,
+        0.3649,
+        0.3534,
+        0.3532,
+        0.3511,
+        0.3465
+      ]
+    },
+    {
+      "question": "What facilities must be provided once an enterprise has 50 or more workers?",
+      "topic": "welfare facilities",
+      "cross_document": false,
+      "expected": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.4766,
+        0.4426,
+        0.4416,
+        0.439,
+        0.4352,
+        0.4263,
+        0.4262,
+        0.4261,
+        0.423,
+        0.4225
+      ]
+    },
+    {
+      "question": "Does the Apache License grant a patent licence to the user?",
+      "topic": "patent grant",
+      "cross_document": false,
+      "expected": [
+        "Apache_License_2.0.txt"
+      ],
+      "retrieved": [
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.5991,
+        0.5251,
+        0.5146,
+        0.449,
+        0.3891,
+        0.3742,
+        0.3538,
+        0.3378,
+        0.3113,
+        0.2893
+      ]
+    },
+    {
+      "question": "Does the Apache License provide any warranty with the software?",
+      "topic": "warranty",
+      "cross_document": false,
+      "expected": [
+        "Apache_License_2.0.txt"
+      ],
+      "retrieved": [
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.4777,
+        0.4487,
+        0.4436,
+        0.399,
+        0.385,
+        0.3126,
+        0.3103,
+        0.2692,
+        0.2508,
+        0.2497
+      ]
+    },
+    {
+      "question": "May I use the licensor's trade marks under the Apache License?",
+      "topic": "trade marks",
+      "cross_document": false,
+      "expected": [
+        "Apache_License_2.0.txt"
+      ],
+      "retrieved": [
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Nepal_Labour_Act_2074.pdf",
+        "Apache_License_2.0.txt",
+        "Nepal_Labour_Act_2074.pdf",
+        "Apache_License_2.0.txt",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6236,
+        0.5792,
+        0.5212,
+        0.5154,
+        0.393,
+        0.3775,
+        0.3772,
+        0.3624,
+        0.3494,
+        0.346
+      ]
+    },
+    {
+      "question": "On what terms are contributions submitted under the Apache License?",
+      "topic": "contributions",
+      "cross_document": false,
+      "expected": [
+        "Apache_License_2.0.txt"
+      ],
+      "retrieved": [
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt",
+        "Apache_License_2.0.txt"
+      ],
+      "similarities": [
+        0.6605,
+        0.6037,
+        0.5451,
+        0.5406,
+        0.5222,
+        0.4915,
+        0.4433,
+        0.443,
+        0.4173,
+        0.4127
+      ]
+    },
+    {
+      "question": "Gratuity is a percentage of basic remuneration -- what is basic remuneration defined as?",
+      "topic": "cross: gratuity base",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6337,
+        0.6314,
+        0.5882,
+        0.5591,
+        0.5191,
+        0.5162,
+        0.5152,
+        0.5147,
+        0.4894,
+        0.4706
+      ]
+    },
+    {
+      "question": "At what age is retirement compulsory, and can an enterprise set it lower?",
+      "topic": "cross: retirement age",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.592,
+        0.5294,
+        0.4869,
+        0.435,
+        0.4077,
+        0.3887,
+        0.3686,
+        0.3668,
+        0.3647,
+        0.3525
+      ]
+    },
+    {
+      "question": "What rest is a pregnant worker entitled to during the working day?",
+      "topic": "cross: pregnancy rest",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6017,
+        0.5884,
+        0.5812,
+        0.5325,
+        0.5185,
+        0.4973,
+        0.4943,
+        0.4847,
+        0.4827,
+        0.4824
+      ]
+    },
+    {
+      "question": "What notice must an employer give when terminating for lack of work?",
+      "topic": "cross: redundancy notice",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6849,
+        0.6244,
+        0.5644,
+        0.5527,
+        0.5275,
+        0.4976,
+        0.4928,
+        0.4815,
+        0.4805,
+        0.4748
+      ]
+    },
+    {
+      "question": "Where must gratuity and provident fund amounts be deposited?",
+      "topic": "cross: where funds go",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6802,
+        0.6552,
+        0.6183,
+        0.5844,
+        0.5598,
+        0.5421,
+        0.534,
+        0.5294,
+        0.504,
+        0.4814
+      ]
+    },
+    {
+      "question": "How is gratuity calculated for service before and after 19 Bhadra 2074?",
+      "topic": "cross: gratuity split",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6476,
+        0.6158,
+        0.6005,
+        0.5928,
+        0.5008,
+        0.4917,
+        0.4735,
+        0.4668,
+        0.4647,
+        0.4612
+      ]
+    },
+    {
+      "question": "What limit applies to employing foreign citizens and for how long?",
+      "topic": "cross: foreign labour cap",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "similarities": [
+        0.7064,
+        0.614,
+        0.5706,
+        0.564,
+        0.5523,
+        0.5507,
+        0.5201,
+        0.5194,
+        0.4629,
+        0.4616
+      ]
+    },
+    {
+      "question": "May a foreign labour's permit be extended beyond the normal maximum?",
+      "topic": "cross: permit extension",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6152,
+        0.6131,
+        0.6056,
+        0.5967,
+        0.5807,
+        0.5666,
+        0.5525,
+        0.544,
+        0.5416,
+        0.5368
+      ]
+    },
+    {
+      "question": "Must a female labour do anything after her maternity leave ends?",
+      "topic": "cross: post-maternity duty",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6675,
+        0.6528,
+        0.5779,
+        0.5345,
+        0.525,
+        0.4817,
+        0.4419,
+        0.4389,
+        0.4305,
+        0.4304
+      ]
+    },
+    {
+      "question": "What happens to the welfare fund if the organization is liquidated?",
+      "topic": "cross: welfare fund on liquidation",
+      "cross_document": true,
+      "expected": [
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf"
+      ],
+      "retrieved": [
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Rules_2075_Summary_PKF.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf",
+        "Nepal_Labour_Act_2074.pdf"
+      ],
+      "similarities": [
+        0.6178,
+        0.5347,
+        0.4696,
+        0.4639,
+        0.4224,
+        0.3892,
+        0.3816,
+        0.3673,
+        0.3554,
+        0.3512
+      ]
+    }
+  ]
+}

@@ -138,7 +138,9 @@ class VectorStore:
         top_k = top_k or config.RETRIEVAL_TOP_K
 
         if self._collection.count() == 0:
-            logger.warning("Query against an empty collection -- ingest documents first")
+            logger.warning(
+                "Query against an empty collection -- ingest documents first"
+            )
             return []
 
         where = {"source_document": source_document} if source_document else None
@@ -156,7 +158,9 @@ class VectorStore:
         distances = (response.get("distances") or [[]])[0]
 
         results: list[dict[str, Any]] = []
-        for text, metadata, distance in zip(documents, metadatas, distances):
+        for text, metadata, distance in zip(
+            documents, metadatas, distances, strict=True
+        ):
             metadata = metadata or {}
             results.append(
                 {
@@ -209,7 +213,9 @@ class VectorStore:
         """
         top_k = top_k or config.RETRIEVAL_TOP_K
         threshold = (
-            threshold if threshold is not None else config.RETRIEVAL_SIMILARITY_THRESHOLD
+            threshold
+            if threshold is not None
+            else config.RETRIEVAL_SIMILARITY_THRESHOLD
         )
 
         query = (query or "").strip()

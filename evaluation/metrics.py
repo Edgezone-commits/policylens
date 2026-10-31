@@ -32,8 +32,9 @@ from __future__ import annotations
 
 import re
 import statistics
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 from evaluation.dataset import Question
 
@@ -121,7 +122,9 @@ class Graded:
         return self.outcome == "CORRECT"
 
 
-def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) -> Graded:
+def grade(
+    item: Question, answer: dict[str, Any], latency_seconds: float = 0.0
+) -> Graded:
     """Score one answer against its label.
 
     `answer` is AgentAnswer.as_dict(), so this grades exactly what the API
@@ -171,7 +174,7 @@ def grade(item: Question, answer: dict[str, Any], latency_seconds: float = 0.0) 
     verdicts = facts_present(text, item.expected_facts)
     missing = [
         list(group)
-        for group, ok in zip(item.expected_facts, verdicts)
+        for group, ok in zip(item.expected_facts, verdicts, strict=True)
         if not ok
     ]
     cited_expected = (
@@ -213,9 +216,7 @@ def aggregate(results: list[Graded]) -> dict[str, Any]:
 
     citations_total = sum(r.total_citations for r in scored)
     citations_verified = sum(r.verified_citations for r in scored)
-    recall_checked = [
-        r for r in asserted if r.cited_expected_documents is not None
-    ]
+    recall_checked = [r for r in asserted if r.cited_expected_documents is not None]
     cross = [r for r in answerable if r.cross_document]
     cross_asserted = [r for r in cross if r.status in ANSWERED_STATUSES]
 
@@ -353,4 +354,222 @@ def aggregate_recall(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "recall_at_k_single": _rate(sum(r["hit"] for r in single), len(single)),
         "recall_at_k_cross": _rate(sum(r["hit"] for r in cross), len(cross)),
         "mean_best_similarity": _mean([r["best_similarity"] for r in rows]),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Ranked retrieval metrics: hit rate@k, recall@k, MRR
+# ---------------------------------------------------------------------------
+# WHY these in addition to the strict recall_at_k above, which the project
+# already reported at k=5: that figure answers one question ("did the top five
+# contain everything needed?") and nothing about WHERE in the five. Two
+# retrievers can both score 92% at k=5 while one puts the evidence first and
+# the other puts it fifth, and only the first survives a smaller k or a
+# tighter context budget.
+#
+# READ THE GRANULARITY BEFORE QUOTING THESE. Ground truth in this dataset is
+# the set of DOCUMENTS a complete answer needs (Question.expected_documents),
+# not a set of gold chunk ids. So "rank 1" means "the top-ranked chunk came
+# from a document the answer needs", which a 234-chunk Act satisfies easily
+# and sometimes by accident. These are document-level metrics, they are
+# generous by construction, and they are for comparing retrieval changes
+# against each other rather than as an absolute standard. Chunk-level ground
+# truth would be the honest fix; it is a labelling job, not a code change, and
+# it is listed as next work in the README.
+#
+# Like measure_recall, these search on the question AS ASKED, without the
+# router's rewrite, so they are a floor on the live system's behaviour.
+
+DEFAULT_KS: tuple[int, ...] = (1, 3, 5, 10)
+
+
+def hit_rate_at_k(retrieved_documents: Iterable[str], expected: Iterable[str]) -> bool:
+    """Did the top-k passages include AT LEAST ONE document the answer needs?
+
+    The lenient counterpart to recall_at_k's `all`. Reported beside it rather
+    than instead of it because the pair localises the cross-document failure
+    exactly: if hit rate is high while strict recall is lower, retrieval is
+    reaching one of the two documents and not both -- a ranking problem, not
+    an "evidence is unreachable" problem.
+    """
+    wanted = set(expected)
+    return bool(wanted) and bool(wanted & set(retrieved_documents))
+
+
+def recall_fraction_at_k(
+    retrieved_documents: Iterable[str], expected: Iterable[str]
+) -> float | None:
+    """What fraction of the needed documents appeared in the top k?
+
+    Sits between the two booleans. For a single-document question it can only
+    be 0.0 or 1.0; for a cross-document one, 0.5 distinguishes "found half the
+    evidence" from "found none", which the strict boolean cannot.
+    """
+    wanted = set(expected)
+    if not wanted:
+        return None
+    return len(wanted & set(retrieved_documents)) / len(wanted)
+
+
+def reciprocal_rank(
+    retrieved_documents: Iterable[str], expected: Iterable[str]
+) -> float:
+    """1/rank of the first passage from a needed document, or 0.0 if none.
+
+    Rank is 1-based, so a hit at the top scores 1.0 and a hit at rank 10
+    scores 0.1. Averaged over questions, this is MRR.
+
+    WHY the FIRST needed document rather than all of them: MRR measures how
+    far a reader must scroll before meeting relevant evidence. For a
+    cross-document question that is an optimistic reading -- the reader needs
+    both documents and this rewards reaching either -- so recall_at_k is
+    reported alongside to keep that visible.
+    """
+    wanted = set(expected)
+    if not wanted:
+        return 0.0
+    for position, document in enumerate(retrieved_documents, start=1):
+        if document in wanted:
+            return 1.0 / position
+    return 0.0
+
+
+def aggregate_ranked(
+    rows: list[dict[str, Any]], ks: Iterable[int] = DEFAULT_KS
+) -> dict[str, Any]:
+    """Roll up ranked retrieval rows into per-k metrics plus MRR.
+
+    Each row: {"cross_document": bool, "expected": [...], "retrieved": [...]}
+    with `retrieved` ordered best-first and as long as the index can supply.
+
+    Reported overall and split single/cross, because the two behave
+    differently enough on this corpus that one combined number hides the
+    finding.
+    """
+    ks = tuple(ks)
+    if not rows:
+        return {"questions": 0, "ks": list(ks), "at_k": {}, "mrr": None}
+
+    groups = {
+        "all": rows,
+        "single_document": [row for row in rows if not row["cross_document"]],
+        "cross_document": [row for row in rows if row["cross_document"]],
+    }
+
+    at_k: dict[str, dict[str, Any]] = {}
+    for k in ks:
+        per_group: dict[str, Any] = {}
+        for name, group in groups.items():
+            if not group:
+                per_group[name] = None
+                continue
+            truncated = [row["retrieved"][:k] for row in group]
+            expected = [row["expected"] for row in group]
+            pairs = list(zip(truncated, expected, strict=True))
+            fractions = [
+                value
+                for docs, want in pairs
+                if (value := recall_fraction_at_k(docs, want)) is not None
+            ]
+            per_group[name] = {
+                "hit_rate": _rate(
+                    sum(hit_rate_at_k(docs, want) for docs, want in pairs), len(group)
+                ),
+                "recall_strict": _rate(
+                    sum(recall_at_k(docs, want) for docs, want in pairs), len(group)
+                ),
+                "recall_fraction": _mean(fractions),
+            }
+        at_k[str(k)] = per_group
+
+    mrr = {
+        name: (
+            _mean([reciprocal_rank(row["retrieved"], row["expected"]) for row in group])
+            if group
+            else None
+        )
+        for name, group in groups.items()
+    }
+
+    return {
+        "questions": len(rows),
+        "ks": list(ks),
+        # The depth actually searched. MRR is computed over this, so a hit
+        # deeper than it scores 0.0 -- which is why the depth is recorded
+        # rather than left for a reader to infer from max(ks).
+        "searched_depth": max(ks),
+        "at_k": at_k,
+        "mrr": mrr,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Latency and cost percentiles
+# ---------------------------------------------------------------------------
+# WHY percentiles and not only the mean the run already reports: the mean is
+# the statistic a retry destroys. A question that fails over to a second model
+# takes several times as long as a typical one, and across 38 questions a
+# single such case moves the mean by seconds while the median does not notice.
+# p50 is what a user usually waits; p95 is what the slow tail costs.
+#
+# statistics.quantiles needs at least two points and interpolates between
+# them, so at these sample sizes the figures are estimates from few samples
+# rather than population facts. The sample size is returned beside them so a
+# reader can weigh them accordingly.
+
+
+def percentiles(values: Iterable[float | None]) -> dict[str, Any]:
+    """p50/p95/min/max/mean over a list of measurements, with n."""
+    clean = sorted(float(value) for value in values if value is not None)
+    if not clean:
+        return {
+            "n": 0,
+            "p50": None,
+            "p95": None,
+            "min": None,
+            "max": None,
+            "mean": None,
+        }
+    if len(clean) == 1:
+        only = round(clean[0], 3)
+        return {
+            "n": 1,
+            "p50": only,
+            "p95": only,
+            "min": only,
+            "max": only,
+            "mean": only,
+        }
+    return {
+        "n": len(clean),
+        "p50": round(statistics.median(clean), 3),
+        # method="inclusive" so the estimate can never exceed the observed
+        # maximum, which the exclusive method can do on a small sample -- and
+        # a p95 above anything that actually happened describes nothing.
+        "p95": round(statistics.quantiles(clean, n=20, method="inclusive")[18], 3),
+        "min": round(clean[0], 3),
+        "max": round(clean[-1], 3),
+        "mean": round(statistics.fmean(clean), 3),
+    }
+
+
+def performance_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Latency, LLM calls and token counts as distributions, not means.
+
+    Each row is one graded question in the shape written to
+    evaluation/results/, so this can be re-derived from a recorded run without
+    spending any quota.
+
+    Errored questions are excluded: a question that failed on a missing key
+    returns in milliseconds and would drag the latency distribution towards
+    zero while describing nothing a user would ever experience.
+    """
+    scored = [row for row in rows if row.get("status") != "ERROR"]
+    return {
+        "questions": len(scored),
+        "excluded_errors": len(rows) - len(scored),
+        "latency_seconds": percentiles([row.get("latency_seconds") for row in scored]),
+        "llm_calls": percentiles([row.get("llm_calls") for row in scored]),
+        "tokens_per_question": percentiles([row.get("total_tokens") for row in scored]),
+        "tokens_total": sum(row.get("total_tokens") or 0 for row in scored),
     }

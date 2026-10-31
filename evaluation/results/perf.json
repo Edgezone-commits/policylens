@@ -1,0 +1,38 @@
+{
+  "ran_at": "2026-10-29T21:41:50",
+  "derived_from": [
+    "evaluation_20261006_132958.json (38 questions, verification=on)",
+    "evaluation_20261006_133626.json (15 questions, verification=on)"
+  ],
+  "throttle_seconds": 4.0,
+  "note": "Derived from recorded runs, so no LLM was called to produce it. Wall-clock seconds as configured, including the inter-call throttle; not a model benchmark.",
+  "summary": {
+    "questions": 53,
+    "excluded_errors": 0,
+    "latency_seconds": {
+      "n": 53,
+      "p50": 9.06,
+      "p95": 18.424,
+      "min": 2.12,
+      "max": 25.22,
+      "mean": 10.365
+    },
+    "llm_calls": {
+      "n": 53,
+      "p50": 2.0,
+      "p95": 4.0,
+      "min": 1.0,
+      "max": 4.0,
+      "mean": 2.113
+    },
+    "tokens_per_question": {
+      "n": 53,
+      "p50": 2251.0,
+      "p95": 7653.4,
+      "min": 526.0,
+      "max": 8368.0,
+      "mean": 2684.981
+    },
+    "tokens_total": 142304
+  }
+}

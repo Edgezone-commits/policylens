@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Callable
+from collections.abc import Callable
 
 from rapidfuzz import fuzz
 
@@ -89,14 +89,12 @@ def match_score(quote: str, chunk_text: str) -> float:
 # Numbers written as words. Legal text uses both forms, often in the same
 # sentence ("eight decimal three three percent"), so digits alone would miss
 # most of the quantities in this corpus.
-_NUMBER_WORDS = frozenset(
-    """
+_NUMBER_WORDS = frozenset("""
     zero one two three four five six seven eight nine ten eleven twelve
     thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty
     thirty forty fifty sixty seventy eighty ninety hundred thousand million
     half quarter third double triple single
-    """.split()
-)
+    """.split())
 
 # Words whose presence or absence inverts a legal provision. Dropping "not"
 # from a clause changes its meaning completely and costs a fuzzy ratio about
@@ -284,7 +282,7 @@ def build_verifier_node(
                     method="judge_unavailable",
                     match_score=round(score, 1),
                     note="; ".join(
-                        divergences + [f"could not be checked: {type(error).__name__}"]
+                        [*divergences, f"could not be checked: {type(error).__name__}"]
                     ),
                 )
                 checked.append(result)  # type: ignore[arg-type]

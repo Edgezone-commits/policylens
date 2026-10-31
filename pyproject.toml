@@ -21,3 +21,43 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"   # matches requires-python above
+
+[tool.ruff.lint]
+# Explicit rather than left to ruff's defaults, so a contributor's `ruff
+# check` reports exactly what CI reports. Two choices worth the comment:
+#   BLE  is selected on purpose. The code has several deliberate broad
+#        `except Exception` blocks (the agent must turn any failure into a
+#        status, not a traceback), each carrying `# noqa: BLE001` with the
+#        reason above it. Selecting BLE is what keeps those suppressions
+#        meaningful -- without it they are dead comments, and RUF100 says so.
+#   E501 is off because black owns line length; having both complain about
+#        the same line produces a fight neither can win.
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "BLE", "RUF"]
+ignore = [
+    "E501",
+    # `"a b c".split()` as a word list. The alternative is a list literal
+    # with a quote per word, which is harder to read and to extend, and
+    # these lists (negation words, critical tokens) are read often.
+    "SIM905",
+    # Ambiguous-unicode rules. The verifier NORMALISES curly quotes, en
+    # dashes and non-breaking spaces, so the literals it compares against
+    # have to contain those exact characters -- the rule would have us
+    # delete the thing being handled. The prose in docstrings uses them too.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's whole parameter-declaration style is function calls in argument
+# defaults (`File(...)`, `Depends(...)`). B008 is right in general and wrong
+# for a framework built on it.
+"src/api/app.py" = ["B008"]

@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-
-from sentence_transformers import SentenceTransformer
+from typing import TYPE_CHECKING
 
 from src import config
+
+if TYPE_CHECKING:  # pragma: no cover -- for type checkers only
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,27 @@ class EmbeddingModel:
 
     def __init__(self, model_name: str | None = None) -> None:
         self.model_name = model_name or config.EMBEDDING_MODEL
+        # Imported HERE rather than at module scope, which is the one unusual
+        # thing in this file and is worth the explanation.
+        #
+        # `import sentence_transformers` pulls in transformers and torch, and
+        # on this machine that costs about 57 seconds -- not milliseconds.
+        # At module scope that cost was paid by anything that imported
+        # src.retrieval.store, which is to say by the agent, the API, the
+        # Streamlit process, every script, and the whole test suite at
+        # COLLECTION time: 190 tests that inject a fake embedder still waited
+        # a minute for a model none of them use. Moving it into the
+        # constructor means the cost is paid by the code that actually embeds
+        # something, and only then.
+        #
+        # It also keeps `--help`, scripts/eval_perf.py and the UI process
+        # (which reaches the agent over HTTP and never embeds) off torch
+        # entirely.
+        from sentence_transformers import SentenceTransformer
+
         # Downloads ~90MB on first use, then reads from the local HF cache.
         logger.info("Loading embedding model: %s", self.model_name)
-        self._model = SentenceTransformer(self.model_name)
+        self._model: SentenceTransformer = SentenceTransformer(self.model_name)
         # sentence-transformers 5.x renamed this method. Support both so the
         # project does not break on either side of that version boundary.
         if hasattr(self._model, "get_embedding_dimension"):

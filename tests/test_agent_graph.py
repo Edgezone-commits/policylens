@@ -377,7 +377,9 @@ def test_fabricated_quote_is_not_published_as_an_answer():
                 "insufficient_evidence": False,
             }
         ],
-        judge=[{"supported": False, "reason": "the excerpt says six months, not one year"}],
+        judge=[
+            {"supported": False, "reason": "the excerpt says six months, not one year"}
+        ],
     )
     answer = build_agent(store, llm).ask("What is the maximum probation period?")
 
@@ -445,7 +447,9 @@ def test_partially_verified_answer_is_published_with_the_failure_marked():
                 "insufficient_evidence": False,
             }
         ],
-        judge=[{"supported": False, "reason": "the excerpt says 8.33 percent, not ten"}],
+        judge=[
+            {"supported": False, "reason": "the excerpt says 8.33 percent, not ten"}
+        ],
     )
     answer = build_agent(store, llm).ask("What are the probation and gratuity rules?")
 
@@ -477,9 +481,7 @@ def test_citation_to_an_excerpt_that_was_never_supplied_is_dropped():
 
     assert answer.status == "INSUFFICIENT_EVIDENCE"
     assert answer.citations == []
-    rejections = [
-        entry for entry in answer.trace if entry["detail"].get("rejections")
-    ]
+    rejections = [entry for entry in answer.trace if entry["detail"].get("rejections")]
     assert rejections, "the dropped citation should be explained in the trace"
 
 
@@ -604,7 +606,7 @@ def test_router_outage_degrades_to_searching_the_question_as_asked():
 
 
 def test_analyzer_outage_is_reported_as_an_error_not_an_abstention():
-    """"I found no evidence" and "I could not run" are different claims."""
+    """ "I found no evidence" and "I could not run" are different claims."""
     store = FakeStore([chunk("act::p8::c1", PROBATION_TEXT)])
     llm = ScriptedLLM(fail={"analyzer"})
     answer = build_agent(store, llm).ask("What is the maximum probation period?")

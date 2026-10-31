@@ -140,7 +140,9 @@ def retry_node(state: AgentState) -> dict:
     elif state.get("citations"):
         reason = "no citation could be confirmed against its passage"
     else:
-        reason = "the rewritten query found nothing; retrying with the question as asked"
+        reason = (
+            "the rewritten query found nothing; retrying with the question as asked"
+        )
 
     logger.info("Retry %d/%d: %s", attempt, config.MAX_RETRIES, reason)
     return {
@@ -315,7 +317,7 @@ class PolicyLensAgent:
 
         try:
             final: AgentState = self.graph.invoke(initial)
-        except Exception as error:  # noqa: BLE001 -- see docstring
+        except Exception as error:
             # The graph should handle its own failures; anything reaching here
             # is a bug or an environment problem. Report it as a failed run
             # rather than letting it escape into the API layer as a 500.

@@ -46,8 +46,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import config  # noqa: E402
-from src.retrieval.store import VectorStore  # noqa: E402
+from src import config
+from src.retrieval.store import VectorStore
 
 logger = logging.getLogger("calibrate_threshold")
 
@@ -149,8 +149,10 @@ def main() -> int:
         logger.error("Index is empty. Run: python scripts/ingest_docs.py data/raw/")
         return 1
 
-    print(f"\nCalibrating against {store.count()} chunks in "
-          f"{len(store.list_documents())} document(s)\n")
+    print(
+        f"\nCalibrating against {store.count()} chunks in "
+        f"{len(store.list_documents())} document(s)\n"
+    )
 
     print("=" * 78)
     print("PROBE SET A -- answers ARE in the corpus (should retrieve)")
@@ -190,15 +192,21 @@ def main() -> int:
     # If B's maximum exceeded A's minimum, NO single threshold could separate
     # them and the honest conclusion would be that this signal is insufficient.
     gap_low, gap_high = max(abstain_scores), min(retrieve_scores)
-    print(f"\nSeparation: highest unanswerable = {gap_low:.3f}, "
-          f"lowest answerable = {gap_high:.3f}")
+    print(
+        f"\nSeparation: highest unanswerable = {gap_low:.3f}, "
+        f"lowest answerable = {gap_high:.3f}"
+    )
     if gap_high > gap_low:
-        print(f"  -> cleanly separable; any threshold in "
-              f"({gap_low:.3f}, {gap_high:.3f}] classifies every probe correctly")
+        print(
+            f"  -> cleanly separable; any threshold in "
+            f"({gap_low:.3f}, {gap_high:.3f}] classifies every probe correctly"
+        )
     else:
-        print("  -> OVERLAPPING: no threshold separates these sets perfectly. "
-              "Some error is unavoidable; the sweep below picks the best "
-              "available trade-off.")
+        print(
+            "  -> OVERLAPPING: no threshold separates these sets perfectly. "
+            "Some error is unavoidable; the sweep below picks the best "
+            "available trade-off."
+        )
 
     sweep = [evaluate_threshold(t, retrieve_scores, abstain_scores) for t in _SWEEP]
     best_score = max(row["balanced_accuracy"] for row in sweep)
@@ -206,15 +214,15 @@ def main() -> int:
     # Among equally good thresholds, take the midpoint of the optimal band
     # rather than an endpoint: an endpoint sits right against a probe score, so
     # a slightly different document or question would flip its classification.
-    recommended = round(
-        (best_rows[0]["threshold"] + best_rows[-1]["threshold"]) / 2, 3
-    )
+    recommended = round((best_rows[0]["threshold"] + best_rows[-1]["threshold"]) / 2, 3)
 
     print("\n" + "=" * 78)
     print("THRESHOLD SWEEP (every 0.05 shown)")
     print("=" * 78)
-    print(f"{'thresh':>7}{'answerable kept':>18}{'unanswerable':>15}"
-          f"{'balanced':>11}{'false abst.':>13}{'false ans.':>12}")
+    print(
+        f"{'thresh':>7}{'answerable kept':>18}{'unanswerable':>15}"
+        f"{'balanced':>11}{'false abst.':>13}{'false ans.':>12}"
+    )
     for row in sweep:
         if abs(row["threshold"] * 100 % 5) > 1e-6:
             continue
@@ -229,12 +237,16 @@ def main() -> int:
     print("\n" + "=" * 78)
     print("RECOMMENDATION")
     print("=" * 78)
-    print(f"  Optimal band:   {best_rows[0]['threshold']:.2f} to "
-          f"{best_rows[-1]['threshold']:.2f}  "
-          f"(balanced accuracy {best_score:.1%})")
+    print(
+        f"  Optimal band:   {best_rows[0]['threshold']:.2f} to "
+        f"{best_rows[-1]['threshold']:.2f}  "
+        f"(balanced accuracy {best_score:.1%})"
+    )
     print(f"  Recommended:    {recommended:.2f}  (midpoint of the band)")
-    print(f"  Currently set:  {config.RETRIEVAL_SIMILARITY_THRESHOLD:.2f}  "
-          f"(RETRIEVAL_SIMILARITY_THRESHOLD in src/config.py)")
+    print(
+        f"  Currently set:  {config.RETRIEVAL_SIMILARITY_THRESHOLD:.2f}  "
+        f"(RETRIEVAL_SIMILARITY_THRESHOLD in src/config.py)"
+    )
     # Judge the configured value by its MARGIN, not by its distance from the
     # recommendation. A threshold can sit inside the optimal band and still be
     # fragile: at 0.30 the nearest off-topic probe scored 0.297, so a 0.003
@@ -244,20 +256,30 @@ def main() -> int:
     margin_below = configured - gap_low  # headroom before a false answer
     margin_above = gap_high - configured  # headroom before a false abstention
     print(f"\n  Margin at the configured {configured:.2f}:")
-    print(f"    {margin_below:+.3f} to the nearest false answer "
-          f"(highest off-topic probe)")
-    print(f"    {margin_above:+.3f} to the nearest false abstention "
-          f"(weakest answerable probe)")
+    print(
+        f"    {margin_below:+.3f} to the nearest false answer "
+        f"(highest off-topic probe)"
+    )
+    print(
+        f"    {margin_above:+.3f} to the nearest false abstention "
+        f"(weakest answerable probe)"
+    )
 
     if margin_below <= 0 or margin_above <= 0:
-        print(f"\n  -> The configured value MISCLASSIFIES a probe. "
-              f"Update config.py to {recommended:.2f}")
+        print(
+            f"\n  -> The configured value MISCLASSIFIES a probe. "
+            f"Update config.py to {recommended:.2f}"
+        )
     elif min(margin_below, margin_above) < 0.02:
-        print(f"\n  -> Correct but thin (under 0.02 of margin). "
-              f"Consider {recommended:.2f} for more headroom.")
+        print(
+            f"\n  -> Correct but thin (under 0.02 of margin). "
+            f"Consider {recommended:.2f} for more headroom."
+        )
     else:
-        print("\n  -> Configured value classifies every probe with margin "
-              "on both sides.")
+        print(
+            "\n  -> Configured value classifies every probe with margin "
+            "on both sides."
+        )
     print()
 
     if args.save:
@@ -269,8 +291,8 @@ def main() -> int:
             "indexed_documents": store.list_documents(),
             "total_chunks": store.count(),
             "probes": {
-                "answerable": dict(zip(SHOULD_RETRIEVE, retrieve_scores)),
-                "unanswerable": dict(zip(SHOULD_ABSTAIN, abstain_scores)),
+                "answerable": dict(zip(SHOULD_RETRIEVE, retrieve_scores, strict=True)),
+                "unanswerable": dict(zip(SHOULD_ABSTAIN, abstain_scores, strict=True)),
             },
             "separation": {
                 "highest_unanswerable": gap_low,
