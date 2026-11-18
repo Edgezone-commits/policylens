@@ -349,6 +349,14 @@ def test_deleting_a_document_that_is_not_there_is_a_404(log):
 # ---------------------------------------------------------------------------
 
 
+def test_root_redirects_to_docs(log):
+    with build_client(FakeAgent(), log) as client:
+        response = client.get("/", follow_redirects=False)
+
+    assert response.status_code in (302, 307)
+    assert response.headers["location"] == "/docs"
+
+
 def test_health_reports_ok_when_the_index_and_the_key_are_both_ready(log, monkeypatch):
     from src.api import app as app_module
 

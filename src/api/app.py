@@ -33,6 +33,7 @@ from typing import Any
 import litellm
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from src import config
 from src.agent.graph import PolicyLensAgent
@@ -111,6 +112,13 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/", include_in_schema=False)
+    def root() -> RedirectResponse:
+        # There is no UI behind this API on a bare deploy (e.g. Fly, where
+        # only /src/api ships). The bare domain would otherwise 404, which
+        # reads as broken rather than as "there's no homepage here."
+        return RedirectResponse(url="/docs")
 
     def get_agent(request: Request) -> PolicyLensAgent:
         return request.app.state.agent
