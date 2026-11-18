@@ -50,3 +50,7 @@ desktop.ini
 # Deliberately local -- it is a scratchpad about the work rather than part of
 # it, and the same ground is covered for a reader by README.md and docs/.
 CLAUDE.md
+
+# flyctl binary, downloaded locally rather than installed system-wide --
+# not part of the project, and too large to commit.
+.tools/

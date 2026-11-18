@@ -4,8 +4,19 @@ The target is a **Hugging Face Space** on the free CPU tier: one container
 running the API and the Streamlit UI together, with the corpus downloaded and
 indexed at build time so the first question is answered immediately.
 
-Nothing here has been deployed. These are the steps to run with your own key,
-and the files they refer to are in `deploy/huggingface/`.
+**Update:** the UI half of this plan is blocked. Hugging Face now returns
+`402 Payment Required` on `create_repo` for a Docker Space on the free
+`cpu-basic` tier — "hosting Gradio and Docker Spaces on free cpu-basic
+requires a PRO subscription." That is new since this plan was written; there
+is no free path to it without subscribing. The steps below are kept as
+written, for whoever has or gets a PRO account.
+
+What is actually live: **the API alone, on Fly.io** —
+https://policylens-api-wage01.fly.dev. See "Deploying the API alone to
+Fly.io" below for how, and for the 512MB crash-loop it hit on the way.
+
+These are the steps to run with your own key, and the files they refer to
+are in `deploy/huggingface/`.
 
 ---
 
@@ -145,6 +156,59 @@ and drop a recording at `docs/demo.gif`.
 | Build takes 20+ minutes | Normal on a cold cache. Only the first one. |
 
 ---
+
+## Deploying the API alone to Fly.io
+
+A second target, added once the Hugging Face Docker Space hit the PRO
+paywall above. This deploys only `src/api`, not the Streamlit UI — there is
+no public UI until the Space question is resolved. Files: `fly.toml` at the
+repo root, and `deploy/fly/Dockerfile`.
+
+**Why a fourth Dockerfile.** The root `Dockerfile`'s `CMD` is already the API
+alone, which is what Fly needs — but it does not bake the corpus, because
+`docker-compose.yml` ingests into a *named volume* that survives rebuilds on
+whatever machine runs it. A Fly machine here has no attached volume, so
+booting the root image gives an API with an empty index — up, but unable to
+answer anything, which is a worse failure than no deploy at all. The Fly
+Dockerfile bakes the corpus at build time instead, the same fix already used
+in `deploy/huggingface/Dockerfile`, so a freshly started (or scaled-to-zero
+and woken) machine answers immediately.
+
+**Steps:**
+
+```bash
+flyctl auth login     # or set FLY_API_TOKEN
+flyctl apps create <your-app-name> --org personal
+flyctl secrets set --app <your-app-name> GOOGLE_API_KEY=... GROQ_API_KEY=...
+flyctl deploy --app <your-app-name>
+```
+
+`fly.toml` already points `[build].dockerfile` at `deploy/fly/Dockerfile`,
+sets `min_machines_running = 0` (scales to zero when idle, so it costs
+nothing while nobody is asking it anything), and checks `/health`.
+
+**The thing that went wrong, for the record.** The first deploy used
+`shared-cpu-1x` at 512MB, matching the "size: shared-cpu-1x, 512MB RAM to
+start" instinct a cost-conscious deploy reaches for. It crash-looped:
+machine started, failed its health check, got restarted by Fly, repeat,
+every ~30 seconds, indefinitely. `oom_killed` never showed `true` in the
+event log, so it was not quite an OOM kill — but the failure mode is the one
+this project's own notes already named for the Hugging Face Space: torch
+plus chromadb plus the embedding model do not fit in 512MB. Fixed with
+`fly machine update <id> --app <your-app-name> --vm-memory 1024`, after
+which the health check passed on the next restart. `fly.toml` requests
+1024MB from the first deploy now, so this should not recur.
+
+**Verify:**
+
+```bash
+curl https://<your-app-name>.fly.dev/health
+```
+
+Expect `chunks_indexed: 279` across the same 3 documents as the recorded
+evaluation. If it is 0, a document host was down during the image build;
+the Hugging Face Space's entrypoint retries this at startup, but this
+Dockerfile does not yet -- redeploying is the current fix.
 
 ## What is deliberately not deployed
 

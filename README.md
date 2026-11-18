@@ -21,9 +21,24 @@ published.
 [docs/demo-script.md](docs/demo-script.md), save it as `docs/demo.gif`, and
 uncomment the image line above.
 
-**Hosted demo:** not deployed yet. [docs/deploy.md](docs/deploy.md) is the
-click-by-click for a free Hugging Face Space, and the image it deploys is
-built on every push by CI.
+**Hosted demo:** the API alone, on Fly.io —
+https://policylens-api-wage01.fly.dev. There is no UI there yet: Hugging
+Face's Docker Spaces (the planned host for the API+UI pair) started
+requiring a PRO subscription after `docs/deploy.md` was written, so that half
+is on hold. Try it with curl:
+
+```bash
+curl https://policylens-api-wage01.fly.dev/health
+
+curl -X POST https://policylens-api-wage01.fly.dev/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the maximum probation period for a worker?"}'
+```
+
+The app machine scales to zero when idle, so the first request after a
+while can take a few seconds to wake it. [docs/deploy.md](docs/deploy.md)
+has the full story, including the Hugging Face blocker and the 512MB
+crash-loop the Fly deploy hit before `fly.toml` was fixed to request 1GB.
 
 The one thing to try, in any version of the demo: ask **"how much is the
 minimum monthly wage in rupees?"** The indexed Act says the Government fixes
